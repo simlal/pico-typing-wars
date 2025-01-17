@@ -1,9 +1,0 @@
-# Pico c/cpp examples
-pico-examples/
-
-# Build files
-build/
-
-# clangd and lsp
-.cache/
-compile_commands.json
