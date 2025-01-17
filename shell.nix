@@ -17,10 +17,19 @@ pkgs.mkShell {
 
     echo
 
-    echo Making sure we have the appropirate rust tools for developping...
+    echo Ensuring we have the appropirate rust tools for developping...
     rustup component add rust-analyzer
     rustup component add rustfmt
 
-    echo -e "\nReady to build for RPI-Pico!"
+    echo
+
+    echo Ensuring we have gcc for compiling/linking...
+    if [ -z "$(which gcc)" ]; then
+    echo "gcc is not installed"
+    else
+    gcc --version
+    fi
+
+    echo -e "\n#### Ready to build for RPI-Pico! ####"
   '';
 }
