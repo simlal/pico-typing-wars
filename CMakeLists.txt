@@ -5,23 +5,17 @@ include(pico_sdk_import.cmake)
 
 project(typing_wars)
 
+# Board type, debug and IDE
+set(PICO_BOARD pico)
+set(CMAKE_BUILD_TYPE debug)
+set(CMAKE_EXPORT_COMPILE_COMMANDS on)
+
 pico_sdk_init()
 
-if(TARGET tinyusb_device)
-  add_executable(typing_wars src/main.c)
+add_executable(typing_wars src/main.c)
 
-  # pull in common dependencies
-  target_link_libraries(typing_wars pico_stdlib)
+# pull in common dependencies
+target_link_libraries(typing_wars pico_stdlib)
 
-  # enable usb output, disable uart output
-  pico_enable_stdio_usb(typing_wars 1)
-  pico_enable_stdio_uart(typing_wars 0)
-
-  # create map/bin/hex/uf2 file etc.
-  pico_add_extra_outputs(typing_wars)
-
-elseif(PICO_ON_DEVICE)
-  message(
-    "Skipping typing_wars because TinyUSB submodule is not initialized in the SDK"
-  )
-endif()
+# create map/bin/hex/uf2 file etc.
+pico_add_extra_outputs(typing_wars)

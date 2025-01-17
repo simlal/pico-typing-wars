@@ -3,6 +3,8 @@ pkgs.mkShell {
   buildInputs = with pkgs; [
     cmake
     gcc-arm-embedded
+    openocd
+    minicom
   ];
 
   shellHook = ''
