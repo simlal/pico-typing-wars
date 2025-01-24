@@ -10,62 +10,35 @@ Le projet est divisé en 2 parties:
 1. **Partie 1**: Implémentation primaire d'un jeu de rapidité de temps de réaction avec bouton et LED
 2. **Partie 2**: Implémentation d'un jeu de rapidité de frappe sur un clavier USB avec affichage sur écran LCD
 
-## Table of contents
+## Table des matières
 
-<details closed>
-<summary><a href="#introduction">Introduction</a></summary>
+<!--toc:start-->
 
-- [Vue d'ensemble](#vue-densemble)
-- [Le]
+- [Project: Pico Typing Wars](#project-pico-typing-wars)
+  - [Table des matières](#table-des-matières)
+  - [Introduction :book:](#introduction-book)
+    - [Vue d'ensemble](#vue-densemble)
+      - [Partie 1](#partie-1)
+      - [Partie 2](#partie-2)
+    - [Le choix de Rust](#le-choix-de-rust)
+  - [Écheancier et livraisons :calendar:](#écheancier-et-livraisons-calendar)
+    - [Objectifs personnels](#objectifs-personnels)
+  - [Environnement de développement :hammer_and_wrench:](#environnement-de-développement-hammerandwrench)
+    - [Chaîne d'outils Rust standards](#chaîne-doutils-rust-standards)
+    - [Ressources, librairies et outils pour le développement Rust sur systèmes embarqués](#ressources-librairies-et-outils-pour-le-développement-rust-sur-systèmes-embarqués)
+    - [Mise en place de l'environnement de développement](#mise-en-place-de-lenvironnement-de-développement)
+  - [Mise en place du matériel :rocket:](#mise-en-place-du-matériel-rocket)
+    - [Matériel requis](#matériel-requis)
+    - [Schéma de connexion et montage en mode démo](#schéma-de-connexion-et-montage-en-mode-démo)
+  - [Pico Typing Wars :video_game:](#pico-typing-wars-videogame)
+    - [Partie 1: Rapidité de réaction](#partie-1-rapidité-de-réaction)
+    - [Partie 2: Rapidité de frappe et affichage](#partie-2-rapidité-de-frappe-et-affichage)
+  - [Analyses et résultats :chart_with_upwards_trend:](#analyses-et-résultats-chartwithupwardstrend)
+  - [Conclusion :checkered_flag:](#conclusion-checkeredflag)
+  - [References :books:](#references-books)
+  <!--toc:end-->
 
-</details>
-
-<details closed>
-<summary><a href="#Echeancier-et-livraisons-calendar">Echeancier et livraisons</a></summary>
-
-</details>
-
-<details>
-<summary><a href="#Environnement-de-développement-hammer_and_wrench">Environnement de développement</a></summary>
-
-- [Matériel requis](#matériel-requis)
-- [Installation de l'environnement de développement](#installation-de-lenvironnement-de-développement)
-
-</details>
-
-<details>
-<summary><a href="Mise-en-place-du-matériel-rocket">Mise en place du matériel</a></summary>
-
-- [Schéma de connexion](#schéma-de-connexion)
-- [Connexion des composants](#connexion-des-composants)
-
-</details>
-
-<details>
-<summary><a href="#Pico-Typing-Wars-video_game">Pico Typing Wars</a></summary>
-
-- [Partie 1: Rapidité de réaction](#partie-1-rapidité-de-réaction)
-- [Partie 2: Rapidité de frappe et affichage](#partie-2-rapidité-de-frappe-et-affichage)
-
-</details>
-
-<details>
-
-<summary><a href="#Analyses-et-résultats-chart_with_upwards_trend">Analyses et résultats</a></summary>
-
-</details>
-
-<details>
-<summary><a href="#conclusion">Conclusion</a></summary>
-
-</details>
-
-<details>
-<summary><a href="#references-books">References</a></summary>
-
-</details>
-
-## Introduction
+## Introduction :book:
 
 ### Vue d'ensemble
 
@@ -76,7 +49,7 @@ Le projet consiste à créer un jeu de rapidité de réponse et de frappe en uti
 
 <!--underline that-->
 
-<span style="text-decoration: underline;">Partie 1</span>
+#### Partie 1
 
 Le jeu est conçu pour tester la rapidité de réaction et de frappe des joueurs. La partie 1 consiste globalement
 à appuyer sur un bouton dès que la LED s'allume après un délai aléatoire suite au déclenchement du jeu. Il y aura
@@ -91,7 +64,7 @@ Le jeu est conçu pour tester la rapidité de réaction et de frappe des joueurs
 
 **À noter**: Implémenter les mécanismes de **reset**, **debounce** etc.
 
-<span style="text-decoration: underline;">Partie 2</span>
+#### Partie 2
 
 La partie 2 est une extension de la partie 1, où le jeu teste la rapidité de frappe des joueurs. Le jeu consiste à prendre
 le gagnant de la partie 1 et le faire jouer à un jeu de rapidité de frappe. Le joueur doit répéter une séquence de caractères
