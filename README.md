@@ -106,6 +106,20 @@ Quoique C soit le langage de prédilection pour les systèmes embarqués, mon im
 avec _CMake_ via le SDK Pico, le débuggage semi-fonctionnelle via un 2e pico avec _OpenOCD_ et _GDB_ ainsi qu'aucune gestion
 native par le SDK pour le _multi-threading_ m'ont poussé à explorer une alternative.
 
+J'ai également eu un problème avec l'initialisation des périphériques via le
+SDK Pico, où l'exemple `blinky` ne fonctionnait pas. En utilisant le 2e pico débuggeur,
+j'ai pu voir que le code s'exécutait, mais blockait dans le code d'initialisation dans la boucle suivante:
+
+```c
+while (!time_reached(t_before)) {
+    uint32_t save = spin_lock_blocking(sleep_notifier.spin_lock);
+    lock_internal_spin_unlock_with_wait(&sleep_notifier, save);
+}
+```
+
+Une trace de cette démarche reste sur la branche `c-version-sdk`.
+J'ai donc décidé de me tourner vers Rust pour ce projet.
+
 Après avoir brièvement exploré l'introduction à Rust via **The Rust Programming Language** [1], j'ai décidé d'opter qui semblait
 être un choix judicieux pour ce projet (ainsi que pour l'apprentissage personnel). La chaîne d'outils de Rust est bien intégrée
 avec le développement de systèmes embarqués.
