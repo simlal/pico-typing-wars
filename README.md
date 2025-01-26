@@ -26,7 +26,10 @@ Le projet est divisé en 2 parties:
   - [Environnement de développement :hammer_and_wrench:](#environnement-de-développement-hammerandwrench)
     - [Chaîne d'outils Rust standards](#chaîne-doutils-rust-standards)
     - [Ressources, librairies et outils pour le développement Rust sur systèmes embarqués](#ressources-librairies-et-outils-pour-le-développement-rust-sur-systèmes-embarqués)
-    - [Mise en place de l'environnement de développement](#mise-en-place-de-lenvironnement-de-développement)
+    - [Débuggage avec `probe-rs` et système de build avec `cargo`](#débuggage-avec-probe-rs-et-système-de-build-avec-cargo)
+      - [Debugging avec un 2e Raspberry Pi Pico](#debugging-avec-un-2e-raspberry-pi-pico)
+      - [Système de buildj](#système-de-buildj)
+      - [Projet `blinky`](#projet-blinky)
   - [Mise en place du matériel :rocket:](#mise-en-place-du-matériel-rocket)
     - [Matériel requis](#matériel-requis)
     - [Schéma de connexion et montage en mode démo](#schéma-de-connexion-et-montage-en-mode-démo)
@@ -152,19 +155,98 @@ Ensuite, il existe plusieurs librairies et outils pour le développement Rust su
 - `rp-rs/rp-hal`: HAL pour le Raspberry Pi Pico. [GitHub](https://github.com/rp-rs/rp-hal)
 - `embassy-rs`: Framework asynchrone pour les systèmes embarqués. [Site Web Officiel](https://embassy.dev/)
 
-### Mise en place de l'environnement de développement
+### Débuggage avec `probe-rs` et système de build avec `cargo`
 
-TODO
+#### Debugging avec un 2e Raspberry Pi Pico
+
+Tel que retrouvé dans la documentation du [Raspberry Pi Pico](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf),
+il est possible d'utiliser un 2e pico comme débuggeur pour le pico principale.
+On peut voir le schéma de connexion ici où le pico débuggeur est connecté à l'ordinateur
+et le pico principale est connecté au pico débuggeur via les pins `SWD` ici:
+
+<img src="./media/pico-debug.png" alt="pico-debugging" width="400">
+
+Ainsi, ça nous permet à la fois de simplifier le chargement des exécutables sur le pico principale et également de
+débugger le code en utilisant `probe-rs` et `gdb`.
+
+#### Système de buildj
+
+Dans le contexte des systèmes embarqués, le projet `blinky` est un projet de démonstration qui consiste à faire clignoter une LED.
+C'est l'équivalent du `hello world!` pour les systèmes embarqués.
+Ainsi, je me suis inspiré de l'exemple du projet `blinky` avec `embassy-rs` pour mettre en place l'environnement de développement.
+
+Ce framework nous permettra de gérer les périphériques et les interruptions de manière asynchrone sans avoir recours
+à un RTOS (Real-Time Operating System). En minimisant les dépendances, un système de build avec `cargo` et `probe-rs`, nous avons un bon point de départ avec [blinky qui se trouve dans se répertoire](./blinky/).
+
+Voici les éléments nécessaires pour établir un système de build avec `cargo` et un Pi Pico:
+
+**`build.rs`**:
+
+- Facilite l'intégration de la carte des addresses mémoires pour le pico
+  avec le fichier `memory.x`. Est utilisé par les crates en lien avec les accès aux périphériques (_PAC_) et
+  les abstraction du matériels (_HAL_).
+- Passer des flags de compilation pour le linker et le compilateur. i.e. `--nmagic` permet de désactiver l'alignement des pages car nous n'utilisons pas un tel système de pagination de la mémoire dans un système embarqué comme le Pico.
+
+**`memory.x`**:
+
+- Fichier de configuration de la mémoire pour le linker. Définit les sections de mémoire pour le bootloader,
+  la mémoire flash et la RAM du pico.
+
+**`Cargo.toml`**:
+
+- Fichier de configuration de `cargo` pour le projet. Contient les dépendances, les configurations de build pour la compilation.
+- Contient également les informations de notre projet (nom, version, auteur etc.)
+
+Les profiles `release` et `dev` sont configurés ici, c'est à dire que lorsque nous compilons notre projet avec
+`cargo build --release`, les options de compilation pour la version de production sont utilisées. Dans notre cas,
+nous avons les options suivantes:
+
+```toml
+# Configuration de build pour la version de production
+[profile.release]
+debug = 2  # Niveau de debuggage complet
+lto = true  # Link Time Optimization actif, donc optimisation du code à la compilation
+opt-level = 'z'  # Niveau d'optimisation pour la taille du binaire à minimiser
+```
+
+**`rust-toolchain.toml`**:
+
+- Fichier de configuration pour `rustup` qui permet de spécifier la chaine d'outils (version et composantes) de Rust.
+
+**`.cargo/config.toml`**:
+
+- Fichier de configuration pour `cargo` qui permet de spécifier les options de build pour le projet.
+- Dans notre cas, on spécifie `probe-rs` comme le `runner` pour le débuggage et la cible `thumbv6m-none-eabi` pour la compilation.
+
+`thumbv6m-none-eabi` est la cible pour les microcontrôleurs ARM Cortex-M0 et M0+ (le processeur du Pico).
+
+**`main.rs`**:
+
+- Fichier source principal du projet.
+- L'attribut `#![no_std]` indique que nous n'utilisons pas la librairie standard de Rust.
+- L'attribut `#![no_main]` indique que nous n'utilisons pas la fonction `main` de Rust,
+  mais plutot la fonction `embassy_executor::main` qui est fournie par le framework `embassy-rs`.
+
+Il y aura plus de détails sur le fonctionnement de `embassy-rs` avec `async/await` plus loin.
+
+#### Projet `blinky`
+
+Le projet `blinky` est un projet de démonstration qui consiste à faire clignoter une LED sur le Raspberry Pi Pico.
+En utilisant le framework `embassy-rs`, ceci nous permet de facilement faire clignoter une LED en prenant avantager
+des fonctionnalités asynchrones (surtout pour le timer).
+
+On voit la LED sur le pico (correspondant à la pin 25) clignoter à une fréquence de 1Hz:
+<img src="./media/pico-blinky-live.gif" alt="blinky-live" width="300">
+
+Sur la console:
+
+<img src="./media/pico-blinky-console.gif" alt="blinky-console" width="800">
 
 ## Mise en place du matériel :rocket:
 
 ### Matériel requis
 
 LIST TODO
-
-### Schéma de connexion et montage en mode démo
-
-TODO
 
 ## Pico Typing Wars :video_game:
 
