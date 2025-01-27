@@ -7,5 +7,3 @@ out/
 # do not track project lock
 Cargo.lock
 
-# config for probe-rs
-.vscode/
