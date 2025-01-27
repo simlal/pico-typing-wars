@@ -1,38 +1,26 @@
 #![no_std]
 #![no_main]
 
+mod led;
+
 use defmt::*;
 use embassy_executor::Spawner;
-use embassy_rp::gpio;
-use embassy_time::Timer;
-use gpio::{Level, Output};
 use {defmt_rtt as _, panic_probe as _};
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
+    info!("Initializing pico...");
     let p = embassy_rp::init(Default::default());
-    let mut led_onboard = Output::new(p.PIN_25, Level::Low);
-    let mut led_player_1 = Output::new(p.PIN_5, Level::Low);
-    let mut led_player_2 = Output::new(p.PIN_8, Level::Low);
+    let mut onboard_led = led::Led::new(p.PIN_25, "onboard");
+    let mut player_1_led = led::Led::new(p.PIN_5, "player_1_led");
+    let mut player_2_led = led::Led::new(p.PIN_8, "player_2_led");
 
     loop {
         //info!("Turning onboard led pin output to high...");
-        led_onboard.set_high();
-        info!("led on!");
-        Timer::after_secs(1).await;
+        onboard_led.blink(1000).await;
 
-        //info!("Turning onboard led pin output to low...");
-        led_onboard.set_low();
-        info!("led off!");
-        Timer::after_secs(1).await;
-
-        // player1 test
-        led_player_1.set_high();
-        led_player_2.set_high();
-        info!("player1/2 quick-on/off");
-        Timer::after_millis(500).await;
-        led_player_1.set_low();
-        led_player_2.set_low();
-        Timer::after_millis(500).await;
+        // players leds test
+        player_1_led.blink(250).await;
+        player_2_led.blink(250).await;
     }
 }
