@@ -3,13 +3,13 @@ use embassy_rp::gpio::{Level, Output, Pin};
 use embassy_time::Timer;
 
 /// A simple abstraction over an output pin with a role
-pub struct Led<'d> {
-    output: Output<'d>,
-    role: &'static str,
+pub struct Led<'a> {
+    output: Output<'a>,
+    role: &'a str,
 }
 
-impl<'d> Led<'d> {
-    pub fn new<P: Pin>(pin: P, role: &'static str) -> Self {
+impl<'a> Led<'a> {
+    pub fn new<P: Pin>(pin: P, role: &'a str) -> Self {
         Self {
             output: Output::new(pin, Level::Low), // Initialize Output with the pin
             role,
@@ -31,7 +31,7 @@ impl<'d> Led<'d> {
     }
 
     /// Get the role of the LED
-    pub fn get_role(&self) -> &'static str {
+    pub fn get_role(&self) -> &str {
         self.role
     }
 }
