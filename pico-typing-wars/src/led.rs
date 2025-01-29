@@ -1,3 +1,5 @@
+use core::usize;
+
 use defmt::*;
 use embassy_rp::gpio::{Level, Output, Pin};
 use embassy_time::Timer;
@@ -17,20 +19,25 @@ impl<'a> Led<'a> {
     }
 
     /// Blink the LED for a specified duration
-    pub async fn blink(&mut self, duration_millis: u64) {
-        self.output.set_high();
-        Timer::after_millis(duration_millis).await;
-        self.output.set_low();
-        Timer::after_millis(duration_millis).await;
-
-        info!(
-            "led with role={} blinked for {} ms",
+    pub async fn flash_pattern(&mut self, blink_duration_millis: u64, repeats: usize) {
+        for _ in 0..repeats {
+            // Make sure we are off before flashing
+            if self.output.is_set_high() {
+                self.output.set_low();
+            }
+            self.output.set_high();
+            Timer::after_millis(blink_duration_millis).await;
+            self.output.set_low();
+            Timer::after_millis(blink_duration_millis).await;
+        }
+        debug!(
+            "led={} flashed {} times with a blink-duration={} ms",
             self.get_role(),
-            duration_millis
+            repeats,
+            blink_duration_millis
         );
     }
 
-    /// Get the role of the LED
     pub fn get_role(&self) -> &str {
         self.role
     }
