@@ -1,8 +1,6 @@
-use core::usize;
-
 use defmt::*;
 use embassy_rp::gpio::{Level, Output, Pin};
-use embassy_time::Timer;
+use embassy_time::{Duration, Timer};
 
 /// A simple abstraction over an output pin with a role
 pub struct Led<'a> {
@@ -19,22 +17,22 @@ impl<'a> Led<'a> {
     }
 
     /// Blink the LED for a specified duration
-    pub async fn flash_pattern(&mut self, blink_duration_millis: u64, repeats: usize) {
+    pub async fn flash_pattern(&mut self, blink_duration: Duration, repeats: usize) {
         for _ in 0..repeats {
             // Make sure we are off before flashing
             if self.output.is_set_high() {
                 self.output.set_low();
             }
             self.output.set_high();
-            Timer::after_millis(blink_duration_millis).await;
+            Timer::after(blink_duration).await;
             self.output.set_low();
-            Timer::after_millis(blink_duration_millis).await;
+            Timer::after(blink_duration).await;
         }
         debug!(
             "led={} flashed {} times with a blink-duration={} ms",
             self.get_role(),
             repeats,
-            blink_duration_millis
+            blink_duration
         );
     }
 
