@@ -1,4 +1,4 @@
-use defmt::*;
+use defmt::Format;
 use embassy_rp::gpio::{Level, Output, Pin};
 use embassy_time::{Duration, Timer};
 
@@ -28,15 +28,30 @@ impl<'a> Led<'a> {
             self.output.set_low();
             Timer::after(blink_duration).await;
         }
-        debug!(
-            "led={} flashed {} times with a blink-duration={} ms",
-            self.get_role(),
-            repeats,
-            blink_duration
-        );
     }
 
-    pub fn get_role(&self) -> &str {
+    pub fn role(&self) -> &str {
         self.role
+    }
+}
+
+// Helper func to defmt Level enum
+fn level_to_str(level: &Level) -> &str {
+    match level {
+        Level::Low => "Low",
+        Level::High => "High",
+    }
+}
+
+// Formatting traits
+
+impl<'a> defmt::Format for Led<'a> {
+    fn format(&self, f: defmt::Formatter) {
+        defmt::write!(
+            f,
+            "Led {{ role: {}, output_level={} }}",
+            self.role(),
+            level_to_str(&self.output.get_output_level()),
+        )
     }
 }

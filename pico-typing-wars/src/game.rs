@@ -25,10 +25,11 @@ impl Game {
     }
 
     // NOTE: only getters for debugging for now not sure to leave here
-    pub fn get_state(&self) -> &GameState {
+    // TODO: MAKE a defmt trait
+    pub fn state(&self) -> &GameState {
         &self.state
     }
-    pub fn get_state_start(&self) -> &Instant {
+    pub fn state_start(&self) -> &Instant {
         &self.state_start
     }
 
