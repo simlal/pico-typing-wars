@@ -28,6 +28,7 @@ async fn main(spawner: Spawner) {
     let mut game = Game::new(GameState::Waiting);
     info!("{}", game);
     // test spawning the waiting task
+    // FIX: Have a static lifetime for leds to pass into task and retain ownership in main
     spawner.spawn(waiting_state_leds(&mut leds));
 
     game.transition(GameState::Playing);
