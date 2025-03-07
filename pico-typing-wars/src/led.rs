@@ -2,7 +2,7 @@ use defmt::Format;
 use embassy_rp::gpio::{Level, Output, Pin};
 use embassy_time::{Duration, Timer};
 
-/// A simple abstraction over an output pin with a role
+// A simple abstraction over an output pin with a role
 pub struct Led<'a> {
     output: Output<'a>,
     role: &'a str,
