@@ -242,11 +242,165 @@ Sur la console:
 
 <img src="./media/pico-blinky-console.gif" alt="blinky-console" width="800">
 
+## Instruction pour l'environnement de développement
+
+### Installation de Rust
+
+  Avec rustup.sh, on installe le gestionnaire de version de Rust `rustup` qui permet de gérer les versions de Rust et les chaines d'outils.
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+Ou également avec le package manager de ta distribution:
+
+```bash
+# Ubuntu/debian
+sudo apt install rustup
+
+# Fedora
+sudo dnf install rustup
+rustup-init
+```
+
+On peux verifier l'installation avec:
+
+```bash
+rustup --version
+rustc --version
+```
+
+On a besoin de `probe-rs` pour le débuggage et la programmation du pico. On l'installe avec `cargo` ou avec un package manager:
+
+```bash
+# avec cargo (de la source)
+cargo install probe-rs
+
+# Script d'installation pour Linux
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/probe-rs/probe-rs/releases/latest/download/probe-rs-tools-installer.sh | sh
+
+probe-rs --version
+```
+
+### Choix de la chaine d'outils
+
+Pour faciliter l'installation de la chaine d'outils pour le développement sur le Pi Pico, on peut d'abord cloner le dépôt:
+
+```bash
+git clone git@github.com:simlal/pico-typing-wars.git
+cd pico-typing-wars
+```
+
+Pour développer avec Rust sur le Raspberry Pi Pico, on a besoin de la chaine d'outils rust `nightly-2024-12-10` pour compiler pour la cible `thumbv6m-none-eabi`.
+
+En étant dans le répertoire du projet, la chaine d'outils devrait être détectée automatiquement par `rustup`.
+
+Ceci est spécifié dans le fichier `rust-toolchain.toml`:
+
+```toml
+[toolchain]
+channel = "nightly-2024-12-10"
+targets = [
+    "thumbv6m-none-eabi",
+]
+```
+
+On peut ajouter ainsi les composantes comme le `rust-analyzer` et `rustfmt` pour notre IDE:
+
+```bash
+rustup component add rust-analyzer
+rustup component add rustfmt
+```
+
+### Compilation et/ou exécution du projet `blinky`
+
+Pour rouler le projet `blinky`, on peut utiliser `cargo` pour compiler et exécuter le projet:
+
+```bash
+cd blinky
+# Pour build seulement 
+cargo build --release
+```
+
+Le mode _release_ est utiliser ici par habitude car on utilise le _flag_ d'optimisation 'z' pour minimiser la taille du binaire. Voici le profil de compilation dans le fichier `Cargo.toml`:
+
+```toml
+[profile.release]
+debug = 2
+lto = true
+opt-level = 'z'
+```
+
+On a est en mode debug quand même avec `debug = 2` pour avoir des informations de debuggage et la variable d'environnement pour notre mode de log:
+
+```toml
+env]
+DEFMT_LOG = "debug"
+```
+
+En ayant le pico débuggeur connecté, on peut directement compiler et exécuter `blinky`:
+
+```bash
+cargo run --release
+
+# On devrait voir le flash et les message de log INFO 
+Finished `release` profile [optimized + debuginfo] target(s) in 0.16s
+     Running `probe-rs run --chip RP2040 target/thumbv6m-none-eabi/release/blinky`
+      Erasing ✔ 100% [####################]  12.00 KiB @  52.45 KiB/s (took 0s)
+  Programming ✔ 100% [####################]  12.00 KiB @  41.28 KiB/s (took 0s)                                                            Finished in 0.53s
+0.000350 INFO  Turning onboard led pin output to high...
+└─ blinky::____embassy_main_task::{async_fn#0} @ src/main.rs:22
+0.000379 INFO  led on!
+└─ blinky::____embassy_main_task::{async_fn#0} @ src/main.rs:24
+1.000426 INFO  Turning onboard led pin output to low...
+└─ blinky::____embassy_main_task::{async_fn#0} @ src/main.rs:27
+1.000446 INFO  led off!
+...
+```
+
+### Compilation et/ou exécution du projet `typing-wars`
+
+Même principe pour le projet `typing-wars`:
+
+```bash
+cd typing-wars
+cargo build --release
+```
+
 ## Mise en place du matériel :rocket:
+
+Tel que vu dans le schéma de connexion pour le débuggage, nous avons besoin de connecter le pico débuggeur à l'ordinateur.
+Ainsi, le pico principal est facilement connecté au pico débuggeur via les pins `SWD` pour flasher le code et débugger le code.
+
+En plus de la mise en place de base, pour notre projet, nous aurons besoin de connecter les composants suivants:
+
+- 2 LEDs (rouge et verte)
+- 2 boutons de couleurs différentes
+- Écran LCD
+- Clavier USB (Optionnel)
+- Adapteurs USB, _breadboard_, fils de connexion etc.
+
+Nous utilisons des couleurs différentes pour les LEDs et les boutons pour distinguer les joueurs.
 
 ### Matériel requis
 
-LIST TODO
+Pour la partie 1, nous avons besoin des composants suivants:
+
+| Composante(s) | Quantité | Description | Prix |
+| ------------- | -------- | ---------- | ---- |
+| Raspberry Pi Pico-H | 2 | Microcontrôleur ARM Cortex-M0+ avec headers pré-installés | 7$ chacun |
+| Breadboards | 2 | Breadboards de 400 points | 5$ chacun |
+| Fils de connection Jumper | TODO | Pour connecter les composants | < 3$ |
+| LEDs | 2 | Rouge et verte | < 3$ |
+| Resistances | ??? | LEDs=1kOhm, Boutons=10kOhm, ??? | < 3$ |
+| Écran LCD | 1 | 3.2 Inch 320x240 Touch LCD | 20$ |
+
+Pour la partie 2, nous ajoutons un clavier USB pour tester la rapidité de frappe des joueurs et un adapteur.
+
+| Composante(s) | Quantité | Description | Prix |
+| ------------- | -------- | ---------- | ---- |
+| Clavier USB | 1 | Clavier USB | ~10$ |
+| Adapteur OTG | 1 | Conversion USB-A vers micro USB | ~10$ |
 
 ## Pico Typing Wars :video_game:
 
@@ -270,7 +424,7 @@ TODO
 
 <!-- As numbered footnotes-->
 
-<a id="0">[0]</a> **Rust Programming Language**. Rust Foundation. 2024. https://www.rust-lang.org/
+<a id="0">[0]</a> **Rust Programming Language**. Rust Foundation. 2024. <https://www.rust-lang.org/>
 <a id="1">[1]</a> **The Rust Programming Language**. Klabnik, Steve, and Carol Nichols. 2nd ed., No Starch Press.
-<a id="2">[2]</a> **Industry and academia support**. Rust For Linux. 2024. https://rust-for-linux.com/industry-and-academia-support
-<a id="3">[3]</a> **The Embedded Rust Book**. Rust Embedded Working Group. 2024. https://docs.rust-embedded.org/book/
+<a id="2">[2]</a> **Industry and academia support**. Rust For Linux. 2024. <https://rust-for-linux.com/industry-and-academia-support>
+<a id="3">[3]</a> **The Embedded Rust Book**. Rust Embedded Working Group. 2024. <https://docs.rust-embedded.org/book/>
