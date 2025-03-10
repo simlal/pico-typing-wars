@@ -13,7 +13,6 @@ Le projet est divisé en 2 parties:
 ## Table des matières
 
 <!--toc:start-->
-
 - [Project: Pico Typing Wars](#project-pico-typing-wars)
   - [Table des matières](#table-des-matières)
   - [Introduction :book:](#introduction-book)
@@ -28,18 +27,22 @@ Le projet est divisé en 2 parties:
     - [Ressources, librairies et outils pour le développement Rust sur systèmes embarqués](#ressources-librairies-et-outils-pour-le-développement-rust-sur-systèmes-embarqués)
     - [Débuggage avec `probe-rs` et système de build avec `cargo`](#débuggage-avec-probe-rs-et-système-de-build-avec-cargo)
       - [Debugging avec un 2e Raspberry Pi Pico](#debugging-avec-un-2e-raspberry-pi-pico)
-      - [Système de buildj](#système-de-buildj)
+      - [Système de build](#système-de-build)
       - [Projet `blinky`](#projet-blinky)
+  - [Instruction pour l'environnement de développement](#instruction-pour-lenvironnement-de-développement)
+    - [Installation de Rust](#installation-de-rust)
+    - [Choix de la chaine d'outils](#choix-de-la-chaine-doutils)
+    - [Compilation et/ou exécution du projet `blinky`](#compilation-etou-exécution-du-projet-blinky)
+    - [Compilation et/ou exécution du projet `typing-wars`](#compilation-etou-exécution-du-projet-typing-wars)
   - [Mise en place du matériel :rocket:](#mise-en-place-du-matériel-rocket)
     - [Matériel requis](#matériel-requis)
-    - [Schéma de connexion et montage en mode démo](#schéma-de-connexion-et-montage-en-mode-démo)
   - [Pico Typing Wars :video_game:](#pico-typing-wars-videogame)
     - [Partie 1: Rapidité de réaction](#partie-1-rapidité-de-réaction)
     - [Partie 2: Rapidité de frappe et affichage](#partie-2-rapidité-de-frappe-et-affichage)
   - [Analyses et résultats :chart_with_upwards_trend:](#analyses-et-résultats-chartwithupwardstrend)
   - [Conclusion :checkered_flag:](#conclusion-checkeredflag)
   - [References :books:](#references-books)
-  <!--toc:end-->
+<!--toc:end-->
 
 ## Introduction :book:
 
@@ -169,7 +172,7 @@ et le pico principale est connecté au pico débuggeur via les pins `SWD` ici:
 Ainsi, ça nous permet à la fois de simplifier le chargement des exécutables sur le pico principale et également de
 débugger le code en utilisant `probe-rs` et `gdb`.
 
-#### Système de buildj
+#### Système de build
 
 Dans le contexte des systèmes embarqués, le projet `blinky` est un projet de démonstration qui consiste à faire clignoter une LED.
 C'est l'équivalent du `hello world!` pour les systèmes embarqués.
@@ -334,7 +337,7 @@ opt-level = 'z'
 On a est en mode debug quand même avec `debug = 2` pour avoir des informations de debuggage et la variable d'environnement pour notre mode de log:
 
 ```toml
-env]
+[env]
 DEFMT_LOG = "debug"
 ```
 
