@@ -2,7 +2,10 @@ use defmt::{error, info, warn, Format};
 
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::mutex::Mutex;
-use embassy_time::{Duration, Instant, Timer};
+use embassy_time::{Duration, Instant};
+
+type GameMutex = Mutex<CriticalSectionRawMutex, Option<Game>>;
+static GAME: GameMutex = Mutex::new(None);
 
 #[derive(PartialEq, Eq, Format, Clone, Copy)]
 pub enum GameState {
@@ -20,10 +23,9 @@ struct Game {
     state_duration: Duration,
 }
 impl Game {
-    // FIX: Make it default to waiting and initilaize leds ?
-    fn new(current_state: GameState) -> Game {
+    fn new() -> Game {
         Game {
-            state: current_state,
+            state: GameState::Waiting,
             state_start: Instant::now(), // Makes sense when first creating the game
             state_duration: Duration::from_secs(0),
         }
@@ -87,12 +89,11 @@ impl Game {
 }
 
 // Game singleton with mutex to share accross tasks
-pub static GAME: Mutex<CriticalSectionRawMutex, Option<Game>> = Mutex::new(None);
 
 // Helper function to initialize the global game instance
 pub async fn initialize_game() {
     let mut game_lock = GAME.lock().await;
-    *game_lock = Some(Game::new(GameState::Waiting));
+    *game_lock = Some(Game::new());
 }
 
 // Helper function to transition game state from any task
