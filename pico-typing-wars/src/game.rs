@@ -1,4 +1,4 @@
-use defmt::{error, info, warn, Format};
+use defmt::{debug, error, info, warn, Format};
 
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::mutex::Mutex;
@@ -13,6 +13,7 @@ pub enum GameState {
     Playing,
     ComputingResult,
     Finished,
+    Reset,
 }
 
 // Singleton game instance
@@ -36,7 +37,7 @@ impl Game {
         self.state_duration = new_duration;
 
         // log it
-        info!(
+        debug!(
             "Current GameState={}, started={} ms from boot with current-duration={} ms",
             self.state,
             self.state_start.as_millis(),
@@ -47,53 +48,61 @@ impl Game {
     fn transition(&mut self, next_state: GameState) {
         if next_state == self.state {
             info!("Already in the {} state, no transition needed.", self.state);
+            self.update_state_duration();
             return;
         }
 
-        info!(
-            "Transitioning game from {} to {} state...",
-            self.state, next_state
-        );
-
         self.update_state_duration();
-
+        info!(
+            "Current state duration before transition={}->{}: {} ",
+            self.state,
+            next_state,
+            self.state_duration.as_millis()
+        );
         self.state = next_state;
         self.state_start = Instant::now();
         self.update_state_duration();
+        // Change the GAME's state object
         match next_state {
             GameState::Waiting => {
                 self.state = GameState::Waiting;
                 self.state_start = Instant::now();
             }
             GameState::Playing => {
-                // TODO: Implement round logic
                 self.state = GameState::Playing;
                 self.state_start = Instant::now();
             }
             GameState::ComputingResult => {
-                // TODO: Implement result logic
                 self.state = GameState::ComputingResult;
                 self.state_start = Instant::now();
             }
             GameState::Finished => {
-                // TODO: PLAY A LED ROUTINE + return to waiting
                 self.state = GameState::Finished;
                 self.state_start = Instant::now();
-
-                // Timer::after_secs(1).await;
-                info!("Finished game!");
-                self.transition(GameState::Waiting);
+            }
+            // Resets to waiting state
+            GameState::Reset => {
+                warn!("Resetting the game!");
+                self.state = GameState::Waiting;
+                self.state_start = Instant::now();
             }
         }
+        info!("Transition finished: {}", self)
     }
 }
 
-// Game singleton with mutex to share accross tasks
+// *** Game singleton with mutex to share accross tasks *** //
 
 // Helper function to initialize the global game instance
 pub async fn initialize_game() {
     let mut game_lock = GAME.lock().await;
     *game_lock = Some(Game::new());
+
+    // Making sure we panic at start of program
+    match *game_lock {
+        None => panic!("Could not initialize_game"),
+        Some(_) => info!("GAME mutex init."),
+    }
 }
 
 // Helper function to transition game state from any task
@@ -103,7 +112,10 @@ pub async fn transition_game_state(next_state: GameState) {
         game.transition(next_state);
     // releases game_lock
     } else {
-        error!("GAME singleton not initialized properly!")
+        error!(
+            "Attempted to transition to {} but GAME singleton not initialized properly!",
+            next_state
+        )
     }
 }
 
@@ -112,8 +124,26 @@ pub async fn update_current_game_state_duration() {
     let mut game_lock = GAME.lock().await;
     if let Some(game) = game_lock.as_mut() {
         game.update_state_duration();
-    // releases game_lock
     } else {
-        warn!("Cannot get hold of GAME singleton")
+        warn!("Attempted to update GAME duration but GAME singleton not initialized");
     }
+}
+
+// NOTE: FUNCTIONAL STYLE example for getting the mutex!
+pub async fn get_current_game_state() -> Option<GameState> {
+    let game_lock = GAME.lock().await;
+    game_lock.as_ref().map(|game| game.state).or_else(|| {
+        warn!("Attempted to get game state but GAME singleton not initialized");
+        None
+    })
+}
+pub async fn get_current_game_state_or_reset() -> GameState {
+    let game_lock = GAME.lock().await;
+    game_lock
+        .as_ref()
+        .map(|game| game.state)
+        .unwrap_or_else(|| {
+            warn!("Attempted to get game state but GAME singleton not initialized. Resetting...");
+            GameState::Reset
+        })
 }
