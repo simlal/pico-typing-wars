@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+mod button;
 mod game;
 mod led;
 
@@ -47,6 +48,8 @@ async fn main(_spawner: Spawner) {
             }
             GameState::Playing => {
                 info!("We are playing!");
+                let total_rounds = 3;
+
                 Timer::after_secs(1).await;
                 transition_game_state(GameState::Waiting).await;
             }

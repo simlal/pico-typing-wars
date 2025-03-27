@@ -1,4 +1,4 @@
-# Project: Pico Typing Wars
+# Project: Pico Button Wars
 
 Projet de session pour le cours _IFT-769 - Systèmes Temps Réel_.
 
@@ -8,12 +8,12 @@ avec des composants électroniques (bouton, LED, écran LCD, clavier USB).
 Le projet est divisé en 2 parties:
 
 1. **Partie 1**: Implémentation primaire d'un jeu de rapidité de temps de réaction avec bouton et LED
-2. **Partie 2**: Implémentation d'un jeu de rapidité de frappe sur un clavier USB avec affichage sur écran LCD
+2. **Partie 2 (optionnel)**: Implémentation d'un jeu de rapidité de frappe sur un clavier USB avec affichage sur écran LCD
 
 ## Table des matières
 
 <!--toc:start-->
-- [Project: Pico Typing Wars](#project-pico-typing-wars)
+- [Project: Pico Button Wars](#project-pico-button-wars)
   - [Table des matières](#table-des-matières)
   - [Introduction :book:](#introduction-book)
     - [Vue d'ensemble](#vue-densemble)
@@ -33,10 +33,10 @@ Le projet est divisé en 2 parties:
     - [Installation de Rust](#installation-de-rust)
     - [Choix de la chaine d'outils](#choix-de-la-chaine-doutils)
     - [Compilation et/ou exécution du projet `blinky`](#compilation-etou-exécution-du-projet-blinky)
-    - [Compilation et/ou exécution du projet `typing-wars`](#compilation-etou-exécution-du-projet-typing-wars)
+    - [Compilation et/ou exécution du projet `pico-button-wars`](#compilation-etou-exécution-du-projet-pico-button-wars)
   - [Mise en place du matériel :rocket:](#mise-en-place-du-matériel-rocket)
     - [Matériel requis](#matériel-requis)
-  - [Pico Typing Wars :video_game:](#pico-typing-wars-videogame)
+  - [Pico Button Wars :video_game:](#pico-button-wars-videogame)
     - [Partie 1: Rapidité de réaction](#partie-1-rapidité-de-réaction)
     - [Partie 2: Rapidité de frappe et affichage](#partie-2-rapidité-de-frappe-et-affichage)
   - [Analyses et résultats :chart_with_upwards_trend:](#analyses-et-résultats-chartwithupwardstrend)
@@ -290,8 +290,8 @@ probe-rs --version
 Pour faciliter l'installation de la chaine d'outils pour le développement sur le Pi Pico, on peut d'abord cloner le dépôt:
 
 ```bash
-git clone git@github.com:simlal/pico-typing-wars.git
-cd pico-typing-wars
+git clone git@github.com:simlal/pico-button-wars.git
+cd pico-button-wars
 ```
 
 Pour développer avec Rust sur le Raspberry Pi Pico, on a besoin de la chaine d'outils rust `nightly-2024-12-10` pour compiler pour la cible `thumbv6m-none-eabi`.
@@ -361,12 +361,12 @@ Finished `release` profile [optimized + debuginfo] target(s) in 0.16s
 ...
 ```
 
-### Compilation et/ou exécution du projet `typing-wars`
+### Compilation et/ou exécution du projet `pico-button-wars`
 
-Même principe pour le projet `typing-wars`:
+Même principe pour le projet `pico-button-wars`:
 
 ```bash
-cd typing-wars
+cd pico-button-wars
 cargo build --release
 ```
 
@@ -405,7 +405,7 @@ Pour la partie 2, nous ajoutons un clavier USB pour tester la rapidité de frapp
 | Clavier USB | 1 | Clavier USB | ~10$ |
 | Adapteur OTG | 1 | Conversion USB-A vers micro USB | ~10$ |
 
-## Pico Typing Wars :video_game:
+## Pico Button Wars :video_game:
 
 ### Partie 1: Rapidité de réaction
 

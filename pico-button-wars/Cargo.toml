@@ -1,5 +1,5 @@
 [package]
-name = "pico-typing-wars"
+name = "pico-button-wars"
 version = "0.1.0"
 edition = "2021"
 
@@ -11,8 +11,16 @@ defmt = "0.3"
 defmt-rtt = "0.4"
 panic-probe = { version = "0.3", features = ["print-defmt"] }
 
-embassy-executor = { version = "0.6", features = ["arch-cortex-m", "executor-thread", "defmt", "integrated-timers"] }
-embassy-time = { version = "0.3", features = ["defmt", "defmt-timestamp-uptime"] }
+embassy-executor = { version = "0.6", features = [
+  "arch-cortex-m",
+  "executor-thread",
+  "defmt",
+  "integrated-timers",
+] }
+embassy-time = { version = "0.3", features = [
+  "defmt",
+  "defmt-timestamp-uptime",
+] }
 embassy-rp = { version = "0.2", features = ["defmt", "time-driver"] }
 embassy-sync = { version = "0.6.2", features = ["defmt"] }
 

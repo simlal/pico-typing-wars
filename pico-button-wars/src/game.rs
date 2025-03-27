@@ -33,7 +33,9 @@ impl Game {
     }
 
     fn update_state_duration(&mut self) {
-        let new_duration = Instant::now().duration_since(self.state_start);
+        let new_duration = Instant::now()
+            .checked_duration_since(self.state_start)
+            .unwrap_or(Duration::from_secs(0));
         self.state_duration = new_duration;
 
         // log it
@@ -54,14 +56,11 @@ impl Game {
 
         self.update_state_duration();
         info!(
-            "Current state duration before transition={}->{}: {} ",
+            "Current state duration before transition={}->{}: {} ms",
             self.state,
             next_state,
             self.state_duration.as_millis()
         );
-        self.state = next_state;
-        self.state_start = Instant::now();
-        self.update_state_duration();
         // Change the GAME's state object
         match next_state {
             GameState::Waiting => {
