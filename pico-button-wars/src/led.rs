@@ -2,6 +2,8 @@ use defmt::{debug, Format};
 use embassy_rp::gpio::{Level, Output, Pin};
 use embassy_time::{Duration, Timer};
 
+use crate::common::LevelToStr;
+
 #[derive(PartialEq, Eq, Format, Clone, Copy)]
 pub enum LedRole {
     Onboard,
@@ -38,27 +40,20 @@ impl Led<'_> {
     }
 }
 
-// Helper func to defmt Level enum
-fn level_to_str(level: &Level) -> &str {
-    match level {
-        Level::Low => "Low",
-        Level::High => "High",
-    }
-}
-
 // Formatting traits
+impl LevelToStr for Led<'_> {}
 impl Format for Led<'_> {
     fn format(&self, f: defmt::Formatter) {
         defmt::write!(
             f,
             "Led {{ role: {}, output_level={} }}",
             self.role,
-            level_to_str(&self.output.get_output_level()),
+            self.level_to_str(&self.output.get_output_level()),
         )
     }
 }
 
-// ****** GameState Leds Tasks ****** //
+// ****** GameState Leds funcs ****** //
 
 // Non concurrent flashing pattern
 pub async fn waiting_state_leds(leds: &'_ mut [Led<'_>; 3]) {
