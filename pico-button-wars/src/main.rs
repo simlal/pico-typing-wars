@@ -60,18 +60,49 @@ async fn main(_spawner: Spawner) {
             GameState::Playing => {
                 info!("We are playing!");
                 // let total_rounds = 3;
-
-                Timer::after_secs(1).await;
-
-                // Test buttons!
-                let minimal_debounce_b1 = button_p1.measure_minimal_debounce(100, 10).await;
-                info!("min debounce ms: {}", minimal_debounce_b1);
-
-                // button_p1.wait_for_press().await;
-                // button_p2.wait_for_press().await;
+                loop {
+                    button_p1.wait_for_press().await;
+                }
 
                 // transition_game_state(GameState::Waiting).await;
             }
+            _ => error!("err"),
+        }
+    }
+}
+
+// TEST DEBOUNCE TIME. Uncomment to run as main
+// #[embassy_executor::main]
+async fn test_debounce_time(_spawner: Spawner) {
+    info!("Raspberry Pi Pico init in main executor...");
+    let p = embassy_rp::init(Default::default());
+
+    // Initializing Buttons peripherals with Pull UP
+    let mut button_p1 = Button::new(p.PIN_10, ButtonRole::Player1);
+    info!("Initializing {}...", &button_p1);
+
+    // Initialize game state singleton in waiting mode
+    game::initialize_game().await;
+    loop {
+        // Take the action based on game state
+        let current_state = get_current_game_state_or_reset().await;
+
+        // NOTE: Main priority compared to button reset + display refresh
+        match current_state {
+            GameState::Playing => {
+                let minimal_debounce_b1 = button_p1.measure_minimal_debounce(100, 10).await;
+                info!(
+                    "min debounce ms: {} for {}",
+                    minimal_debounce_b1, &button_p1
+                );
+
+                game::transition_game_state(GameState::Finished).await;
+            }
+            GameState::Finished => {
+                info!("Done testing. Going into wait mode.");
+                game::transition_game_state(GameState::Waiting).await;
+            }
+
             _ => error!("err"),
         }
     }

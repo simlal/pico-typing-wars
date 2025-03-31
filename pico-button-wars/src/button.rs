@@ -6,6 +6,9 @@ use defmt::{debug, info, Format};
 use embassy_rp::gpio::{Input, Level, Pin, Pull};
 use embassy_time::{Duration, Instant, Timer};
 
+// Debounce time with prior tests from measure_minimal_debounce()
+const MINIMAL_DEBOUNCE_TIME: u64 = 50;
+
 #[derive(PartialEq, Eq, Format, Clone, Copy)]
 pub enum ButtonRole {
     Player1,
@@ -14,6 +17,7 @@ pub enum ButtonRole {
 pub struct Button<'a> {
     input: Input<'a>,
     role: ButtonRole,
+    debounce: Duration,
 }
 
 impl Button<'_> {
@@ -21,17 +25,27 @@ impl Button<'_> {
         Self {
             input: Input::new(pin, Pull::Up), // Initialize input with pull up
             role,
+            debounce: Duration::from_millis(MINIMAL_DEBOUNCE_TIME),
         }
     }
 
     pub async fn wait_for_press(&mut self) {
-        self.input.wait_for_low().await;
-        info!("{} is LOW!", self);
-        Timer::after_millis(100).await;
+        loop {
+            self.input.wait_for_falling_edge().await;
+            Timer::after(self.debounce).await;
+            // safety in case debounce not enough
+            if self.input.get_level() == Level::Low {
+                break;
+            }
+        }
+        info!("Button {} pressed.", self.role);
+        // Wait for button release
         self.input.wait_for_high().await;
     }
 
+    // Figure out minimal debounce time for button press
     pub async fn measure_minimal_debounce(&mut self, ms_test_range: u64, iterations: usize) -> u64 {
+        const MIN_DEBOUNCE_DEFAULT_IN_TEST: u64 = 150;
         info!(
             "Measuring debounce for {} Button with {} ms max and averaging over {}",
             self.role, ms_test_range, iterations
@@ -122,8 +136,11 @@ impl Button<'_> {
             "Summary: Avg transitions={}, longest_debounce_time={} ms over {} iterations.",
             avg_transitions, max_debounce_time, iterations
         );
-        info!("Returning 20% over maximum debounce time");
-        (max_debounce_time + (max_debounce_time / 5)).max(5)
+        info!(
+            "Returning 20% over maximum debounce time or default {}",
+            MIN_DEBOUNCE_DEFAULT_IN_TEST
+        );
+        (max_debounce_time + (max_debounce_time / 5)).max(MIN_DEBOUNCE_DEFAULT_IN_TEST)
     }
 }
 
