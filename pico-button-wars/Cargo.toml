@@ -23,6 +23,7 @@ embassy-time = { version = "0.3", features = [
 ] }
 embassy-rp = { version = "0.2", features = ["defmt", "time-driver"] }
 embassy-sync = { version = "0.6.2", features = ["defmt"] }
+embassy-futures = "0.1.1"
 
 
 [profile.release]

@@ -9,15 +9,21 @@ mod led;
 use button::{monitor_double_longpress, Button, ButtonMutex, ButtonRole};
 use defmt::*;
 use embassy_executor::Spawner;
+use embassy_futures::select::{select, Either};
 use embassy_rp::watchdog::*;
 use embassy_sync::{blocking_mutex::raw::ThreadModeRawMutex, mutex::Mutex};
-use embassy_time::{with_deadline, Duration, Instant, Ticker, Timer};
+use embassy_time::{Duration, Instant, Ticker, Timer};
+
+use {defmt_rtt as _, panic_probe as _};
+
 use game::{
     get_current_game_state_or_reset, transition_game_state, update_current_game_state_duration,
     GameState,
 };
-use led::{waiting_state_leds, Led, LedRole};
-use {defmt_rtt as _, panic_probe as _};
+use led::{
+    end_round_winner_flashing_pattern, round_playing_leds_routine_on_off, waiting_state_leds, Led,
+    LedRole,
+};
 
 // Static watchdog & buttons periphs to allow for tasks
 static WATCHDOG: Mutex<ThreadModeRawMutex, Option<Watchdog>> = Mutex::new(None);
@@ -70,7 +76,7 @@ async fn main(spawner: Spawner) {
         *button_p1_unlocked = Some(Button::new(p.PIN_10, ButtonRole::Player1));
 
         let mut button_p2_unlocked = BUTTON_P2.lock().await;
-        *button_p2_unlocked = Some(Button::new(p.PIN_11, ButtonRole::Player1));
+        *button_p2_unlocked = Some(Button::new(p.PIN_11, ButtonRole::Player2));
 
         // Making sure we panic if unproperly init
         match *button_p1_unlocked {
@@ -108,34 +114,57 @@ async fn main(spawner: Spawner) {
             }
             GameState::Playing => {
                 info!("We are playing!");
-                // let total_rounds = 3;
-                loop {
-                    // if let Some(button_p1) = (BUTTON_P1.lock().await).as_mut() {
-                    //     let press_duration = button_p1.measure_full_press_release().await;
-                    //     info!("{}", press_duration.as_millis());
-                    //
-                    info!("1s in playing loop");
-                    Timer::after_secs(1).await;
+                let total_rounds = 3;
+                // TODO: player scores + times with heapless?
+                let scores = 0;
+                for i in 0..total_rounds {
+                    info!("Round {}", i);
+
+                    // Insure we have both button mutex
+                    let mut b1_unlocked = BUTTON_P1.lock().await;
+                    let mut b2_unlocked = BUTTON_P2.lock().await;
+                    if let (Some(b1_ref), Some(b2_ref)) =
+                        (b1_unlocked.as_mut(), b2_unlocked.as_mut())
+                    {
+                        let target_time_press = round_playing_leds_routine_on_off(&mut leds).await;
+                        let winner_timepress = select(
+                            b1_ref.measure_full_press_release(),
+                            b2_ref.measure_full_press_release(),
+                        )
+                        .await;
+
+                        let winner_button = match winner_timepress {
+                            Either::First(_) => {
+                                info!("B1 was faster!");
+                                b1_ref.role()
+                            }
+                            Either::Second(_) => {
+                                info!("B2 was faster!");
+                                b2_ref.role()
+                            }
+                        };
+
+                        // TODO: Calculate time to press for winner
+
+                        // TODO: implement player score tracking + times
+                        end_round_winner_flashing_pattern(&mut leds, winner_button, i).await;
+
+                        // HOW DO I KNOW which completed??
+                    }
+                    // Start random length leds on for game round
                 }
-                // info!("{}", press_duration.as_millis());
-                // let start = Instant::now();
+                // leds[1].flash_pattern(Duration::from_secs(2), 1).await;
+
+                // if let Some(button_p1) = (BUTTON_P1.lock().await).as_mut() {
+                //     let press_duration = button_p1.measure_full_press_release().await;
+                //     info!("{}", press_duration.as_millis());
                 //
-                // match with_deadline(start + Duration::from_secs(3), button_p1.wait_for_press())
-                //     .await
-                // {
-                //     // Button Released < 1s
-                //     Ok(_) => {
-                //         info!("Button pressed for: {}ms", start.elapsed().as_millis());
-                //         continue;
-                //     }
-                //     // button held for > 1s
-                //     Err(_) => {
-                //         info!("Button Held");
-                //     }
+                //     info!("1s in playing loop");
+                //     Timer::after_secs(1).await;
                 // }
+                transition_game_state(GameState::Waiting).await;
             }
 
-            // transition_game_state(GameState::Waiting).await;
             GameState::Finished => {
                 info!("Done testing. Going into wait mode.");
                 game::transition_game_state(GameState::Waiting).await;

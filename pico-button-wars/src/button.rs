@@ -1,5 +1,3 @@
-use core::iter;
-
 use crate::common::LevelToStr;
 
 use defmt::{debug, info, Format};
@@ -34,6 +32,10 @@ impl Button<'_> {
             role,
             debounce: Duration::from_millis(MINIMAL_DEBOUNCE_TIME),
         }
+    }
+
+    pub fn role(&self) -> ButtonRole {
+        self.role
     }
 
     async fn wait_for_press(&mut self) -> Instant {

@@ -2,7 +2,10 @@ use defmt::{debug, info, Format};
 use embassy_rp::gpio::{Level, Output, Pin};
 use embassy_time::{Duration, Instant, Timer};
 
-use crate::common::{LevelToStr, SimpleRngU64};
+use crate::{
+    button::ButtonRole,
+    common::{LevelToStr, SimpleRngU64},
+};
 
 #[derive(PartialEq, Eq, Format, Clone, Copy)]
 pub enum LedRole {
@@ -99,12 +102,49 @@ pub async fn waiting_state_leds(leds: &'_ mut [Led<'_>; 3]) {
     Timer::after_millis(500).await;
 }
 
+pub async fn end_round_winner_flashing_pattern(
+    leds: &'_ mut [Led<'_>; 3],
+    winner_button: ButtonRole,
+    current_score: usize,
+) {
+    for _ in 0..3 {
+        for led in leds.iter_mut().rev() {
+            led.flash_pattern(Duration::from_millis(50), 1).await;
+        }
+    }
+    Timer::after_millis(250).await;
+
+    // Flash the winner
+    let winner_led_role = match winner_button {
+        ButtonRole::Player1 => LedRole::Player1,
+        ButtonRole::Player2 => LedRole::Player2,
+    };
+
+    if let Some(winner_led) = leds.iter_mut().find(|led| led.role == winner_led_role) {
+        debug!(
+            "Blinking winner {} for current_score: {}",
+            winner_led, current_score
+        );
+        for i in 0..current_score {
+            winner_led.turn_on();
+            Timer::after_millis(500).await;
+
+            winner_led.turn_off();
+            Timer::after_millis(500).await;
+            info!("{}", i);
+        }
+    }
+}
+
 // Turns on, then off for a random time with 'OFF' instant return for calculation of fastest player
 pub async fn round_playing_leds_routine_on_off(leds: &'_ mut [Led<'_>; 3]) -> Instant {
     // Generate random time in ms between 2000-5000 ms
     let mut rng = SimpleRngU64::new();
     let leds_duration = rng.generate_from_range(2000, 5000);
-    info!("Generated leds duration on for round: {} ms", leds_duration);
+    info!(
+        "Rng time for LED ON until shutoff for a game round: {} ms",
+        leds_duration
+    );
 
     // Toggle on and then off
     for led in leds.iter_mut() {
