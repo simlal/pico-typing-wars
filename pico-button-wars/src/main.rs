@@ -103,7 +103,7 @@ async fn main(spawner: Spawner) {
         match current_state {
             GameState::Waiting => {
                 info!("We are waiting!");
-                waiting_state_leds(&mut leds).await;
+                // waiting_state_leds(&mut leds).await;
                 transition_game_state(GameState::Playing).await;
             }
             GameState::Playing => {
@@ -194,7 +194,7 @@ pub async fn feed_watchdog(
             let mut wd_unlocked = wd.lock().await;
             if let Some(wd) = wd_unlocked.as_mut() {
                 wd.feed();
-                info!("watchdog fed")
+                // info!("watchdog fed")
             }
         } // watchdog lock dropped here
         ticker.next().await;

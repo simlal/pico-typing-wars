@@ -185,28 +185,94 @@ impl Format for Button<'_> {
 #[embassy_executor::task(pool_size = 1)]
 pub async fn monitor_double_longpress(
     b1: &'static ButtonMutex,
-    _b2: &'static ButtonMutex,
+    b2: &'static ButtonMutex,
     wd: &'static Mutex<ThreadModeRawMutex, Option<Watchdog>>,
 ) {
-    // Poll the longpress at 1Hz to avoid over taking the mutex
-    let mut ticker = Ticker::every(Duration::from_secs(1));
+    // Less-blocking approach with 50 ms polling on button mutex
+    let mut ticker = Ticker::every(Duration::from_millis(50));
+
+    // Track long press state
+    let mut b1_pressed_time: Option<Instant> = None;
+    let mut b2_pressed_time: Option<Instant> = None;
+    let mut reset_countdown_active = false;
+
     loop {
-        let mut b1_unlocked = b1.lock().await;
-        if let Some(b1_ref) = b1_unlocked.as_mut() {
-            let press_duration = b1_ref.measure_full_press_release().await;
-            if press_duration.as_millis() >= 3000 {
+        // Check both buttons without holding locks for too long
+        let b1_pressed = {
+            let button_lock = b1.lock().await;
+            if let Some(button) = button_lock.as_ref() {
+                button.input.get_level() == Level::Low
+            } else {
+                false
+            }
+        };
+
+        let b2_pressed = {
+            let button_lock = b2.lock().await;
+            if let Some(button) = button_lock.as_ref() {
+                button.input.get_level() == Level::Low
+            } else {
+                false
+            }
+        };
+
+        // Update press times
+        if b1_pressed && b1_pressed_time.is_none() {
+            b1_pressed_time = Some(Instant::now());
+            debug!("Button 1 pressed");
+        }
+
+        if b2_pressed && b2_pressed_time.is_none() {
+            b2_pressed_time = Some(Instant::now());
+            debug!("Button 2 pressed");
+        }
+
+        // Check for button releases
+        if !b1_pressed && b1_pressed_time.is_some() {
+            let duration = b1_pressed_time.unwrap().elapsed();
+            debug!("Button 1 released after {} ms", duration.as_millis());
+            b1_pressed_time = None;
+            reset_countdown_active = false;
+        }
+
+        if !b2_pressed && b2_pressed_time.is_some() {
+            let duration = b2_pressed_time.unwrap().elapsed();
+            debug!("Button 2 released after {} ms", duration.as_millis());
+            b2_pressed_time = None;
+            reset_countdown_active = false;
+        }
+
+        // Check for longpress condition
+        if let (Some(t1), Some(t2)) = (b1_pressed_time, b2_pressed_time) {
+            let b1_duration = t1.elapsed();
+            let b2_duration = t2.elapsed();
+
+            if !reset_countdown_active
+                && b1_duration.as_millis() >= 1000
+                && b2_duration.as_millis() >= 1000
+            {
+                reset_countdown_active = true;
                 info!(
-                    "Longpress detected (Duration={} ms), resetting the game via watchdog",
-                    press_duration.as_millis()
+                    "Both buttons held for 1+ second. Continuing to monitor for reset threshold..."
+                );
+            }
+
+            // Check if press duration is enough to trigger reset
+            if b1_duration.as_millis() >= 3000 && b2_duration.as_millis() >= 3000 {
+                info!(
+                    "Long press detected on both buttons (b1={} ms, b2={} ms). Resetting via watchdog...",
+                    b1_duration.as_millis(),
+                    b2_duration.as_millis()
                 );
 
-                // Starve the watchdog for hard reset
-                let mut _inf_wd_lock = wd.lock().await;
+                // Lock the watchdog to prevent feeding
+                let _lock_forever = wd.lock().await;
                 loop {
-                    Timer::after_secs(10).await; // safety to make sure we still have lock
+                    Timer::after_secs(10).await; // Keep the lock forever
                 }
             }
         }
+
         ticker.next().await;
     }
 }
