@@ -4,7 +4,13 @@ use crate::common::LevelToStr;
 
 use defmt::{debug, info, Format};
 use embassy_rp::gpio::{Input, Level, Pin, Pull};
-use embassy_time::{Duration, Instant, Timer};
+use embassy_rp::watchdog::*;
+use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
+use embassy_sync::mutex::Mutex;
+use embassy_time::{Duration, Instant, Ticker, Timer};
+
+// Could be subject to interrupt but OK for now
+pub type ButtonMutex = Mutex<ThreadModeRawMutex, Option<Button<'static>>>;
 
 // Debounce time with prior tests from measure_minimal_debounce()
 const MINIMAL_DEBOUNCE_TIME: u64 = 50;
@@ -14,6 +20,7 @@ pub enum ButtonRole {
     Player1,
     Player2,
 }
+
 pub struct Button<'a> {
     input: Input<'a>,
     role: ButtonRole,
@@ -29,18 +36,36 @@ impl Button<'_> {
         }
     }
 
-    pub async fn wait_for_press(&mut self) {
+    async fn wait_for_press(&mut self) -> Instant {
         loop {
             self.input.wait_for_falling_edge().await;
+            let press_instant = Instant::now();
             Timer::after(self.debounce).await;
             // safety in case debounce not enough
             if self.input.get_level() == Level::Low {
-                break;
+                info!("{} button pressed.", self.role);
+                return press_instant;
             }
         }
-        info!("Button {} pressed.", self.role);
-        // Wait for button release
-        self.input.wait_for_high().await;
+    }
+
+    async fn wait_for_release(&mut self) -> Instant {
+        loop {
+            self.input.wait_for_low().await;
+            let release_instant = Instant::now();
+            Timer::after(self.debounce).await;
+            // safety in case debounce not enough
+            if self.input.get_level() == Level::High {
+                info!("{} button released.", self.role);
+                return release_instant;
+            }
+        }
+    }
+
+    pub async fn measure_full_press_release(&mut self) -> Duration {
+        let start = self.wait_for_press().await;
+        let end = self.wait_for_release().await;
+        end - start
     }
 
     // Figure out minimal debounce time for button press
@@ -154,6 +179,35 @@ impl Format for Button<'_> {
             self.role,
             self.level_to_str(&self.input.get_level()),
         )
+    }
+}
+
+#[embassy_executor::task(pool_size = 1)]
+pub async fn monitor_double_longpress(
+    b1: &'static ButtonMutex,
+    _b2: &'static ButtonMutex,
+    wd: &'static Mutex<ThreadModeRawMutex, Option<Watchdog>>,
+) {
+    // Poll the longpress at 1Hz to avoid over taking the mutex
+    let mut ticker = Ticker::every(Duration::from_secs(1));
+    loop {
+        let mut b1_unlocked = b1.lock().await;
+        if let Some(b1_ref) = b1_unlocked.as_mut() {
+            let press_duration = b1_ref.measure_full_press_release().await;
+            if press_duration.as_millis() >= 3000 {
+                info!(
+                    "Longpress detected (Duration={} ms), resetting the game via watchdog",
+                    press_duration.as_millis()
+                );
+
+                // Starve the watchdog for hard reset
+                let mut _inf_wd_lock = wd.lock().await;
+                loop {
+                    Timer::after_secs(10).await; // safety to make sure we still have lock
+                }
+            }
+        }
+        ticker.next().await;
     }
 }
 
