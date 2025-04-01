@@ -1,8 +1,8 @@
-use defmt::{debug, Format};
+use defmt::{debug, info, Format};
 use embassy_rp::gpio::{Level, Output, Pin};
-use embassy_time::{Duration, Timer};
+use embassy_time::{Duration, Instant, Timer};
 
-use crate::common::LevelToStr;
+use crate::common::{LevelToStr, SimpleRngU64};
 
 #[derive(PartialEq, Eq, Format, Clone, Copy)]
 pub enum LedRole {
@@ -23,6 +23,14 @@ impl Led<'_> {
             output: Output::new(pin, Level::Low), // Initialize Output with the pin
             role,
         }
+    }
+
+    pub fn turn_on(&mut self) {
+        self.output.set_high();
+    }
+
+    pub fn turn_off(&mut self) {
+        self.output.set_low();
     }
 
     /// Blink the LED for a specified duration
@@ -89,4 +97,24 @@ pub async fn waiting_state_leds(leds: &'_ mut [Led<'_>; 3]) {
         }
     }
     Timer::after_millis(500).await;
+}
+
+// Turns on, then off for a random time with 'OFF' instant return for calculation of fastest player
+pub async fn round_playing_leds_routine_on_off(leds: &'_ mut [Led<'_>; 3]) -> Instant {
+    // Generate random time in ms between 2000-5000 ms
+    let mut rng = SimpleRngU64::new();
+    let leds_duration = rng.generate_from_range(2000, 5000);
+    info!("Generated leds duration on for round: {} ms", leds_duration);
+
+    // Toggle on and then off
+    for led in leds.iter_mut() {
+        led.turn_on();
+    }
+    Timer::after_millis(leds_duration).await;
+
+    for led in leds.iter_mut() {
+        led.turn_off();
+    }
+    info!("GO!");
+    Instant::now()
 }
