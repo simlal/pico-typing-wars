@@ -49,6 +49,8 @@ Le projet est divisé en 2 parties:
         - [Initialisation et lancement de tâches asynchrones](#initialisation-et-lancement-de-tâches-asynchrones)
         - [Boucle principale du jeu](#boucle-principale-du-jeu)
   - [Démo :movie_camera:](#démo-moviecamera)
+    - [Exemple d'une partie](#exemple-dune-partie)
+    - [Reset avec les 2 boutons](#reset-avec-les-2-boutons)
   - [Conclusion :checkered_flag:](#conclusion-checkeredflag)
   - [References :books:](#references-books)
 <!--toc:end-->
