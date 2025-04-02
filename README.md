@@ -10,6 +10,8 @@ Le projet est divisé en 2 parties:
 1. **Partie 1**: Implémentation primaire d'un jeu de rapidité de temps de réaction avec bouton et LED
 2. **Partie 2 (optionnel)**: Implémentation d'un jeu de rapidité de frappe sur un clavier USB avec affichage sur écran LCD
 
+Voir la [démonstration pour la partie 1 ici](#démo-moviecamera)
+
 ## Table des matières
 
 <!--toc:start-->
