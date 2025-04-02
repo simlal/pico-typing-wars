@@ -1,8 +1,11 @@
 use defmt::{debug, error, info, warn, Format};
 
-use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
-use embassy_sync::mutex::Mutex;
-use embassy_time::{Duration, Instant};
+use embassy_rp::watchdog::Watchdog;
+use embassy_sync::{
+    blocking_mutex::raw::{CriticalSectionRawMutex, ThreadModeRawMutex},
+    mutex::Mutex,
+};
+use embassy_time::{Duration, Instant, Timer};
 
 type GameMutex = Mutex<CriticalSectionRawMutex, Option<Game>>;
 static GAME: GameMutex = Mutex::new(None);
@@ -11,9 +14,8 @@ static GAME: GameMutex = Mutex::new(None);
 pub enum GameState {
     Waiting,
     Playing,
-    ComputingResult,
+    ComputingResults,
     Finished,
-    Reset,
 }
 
 // Singleton game instance
@@ -71,18 +73,12 @@ impl Game {
                 self.state = GameState::Playing;
                 self.state_start = Instant::now();
             }
-            GameState::ComputingResult => {
-                self.state = GameState::ComputingResult;
+            GameState::ComputingResults => {
+                self.state = GameState::ComputingResults;
                 self.state_start = Instant::now();
             }
             GameState::Finished => {
                 self.state = GameState::Finished;
-                self.state_start = Instant::now();
-            }
-            // Resets to waiting state
-            GameState::Reset => {
-                warn!("Resetting the game!");
-                self.state = GameState::Waiting;
                 self.state_start = Instant::now();
             }
         }
@@ -136,13 +132,25 @@ pub async fn get_current_game_state() -> Option<GameState> {
         None
     })
 }
-pub async fn get_current_game_state_or_reset() -> GameState {
+pub async fn get_current_game_state_or_reset(
+    wd: &'static Mutex<ThreadModeRawMutex, Option<Watchdog>>,
+) -> GameState {
     let game_lock = GAME.lock().await;
-    game_lock
-        .as_ref()
-        .map(|game| game.state)
-        .unwrap_or_else(|| {
-            warn!("Attempted to get game state but GAME singleton not initialized. Resetting...");
-            GameState::Reset
-        })
+    match game_lock.as_ref() {
+        Some(game) => game.state,
+        None => {
+            async {
+                warn!(
+                    "Attempted to get game state but GAME singleton not initialized. Resetting..."
+                );
+                // Lock the watchdog to prevent feeding
+                let _lock_forever = wd.lock().await;
+                loop {
+                    Timer::after_secs(10).await; // Keep the lock forever
+                }
+            };
+            // HACK: Should not be reached, but fallback
+            GameState::Waiting
+        }
+    }
 }

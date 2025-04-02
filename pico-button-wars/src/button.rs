@@ -1,6 +1,7 @@
 use crate::common::LevelToStr;
 
 use defmt::{debug, info, Format};
+use embassy_futures::select::{select, Either};
 use embassy_rp::gpio::{Input, Level, Pin, Pull};
 use embassy_rp::watchdog::*;
 use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
@@ -13,7 +14,7 @@ pub type ButtonMutex = Mutex<ThreadModeRawMutex, Option<Button<'static>>>;
 // Debounce time with prior tests from measure_minimal_debounce()
 const MINIMAL_DEBOUNCE_TIME: u64 = 50;
 
-#[derive(PartialEq, Eq, Format, Clone, Copy)]
+#[derive(PartialEq, Eq, Format, Clone, Copy, Debug, Hash)]
 pub enum ButtonRole {
     Player1,
     Player2,
@@ -64,10 +65,10 @@ impl Button<'_> {
         }
     }
 
-    pub async fn measure_full_press_release(&mut self) -> Duration {
-        let start = self.wait_for_press().await;
+    pub async fn measure_full_press_release(&mut self) -> Instant {
+        self.wait_for_press().await;
         let end = self.wait_for_release().await;
-        end - start
+        end
     }
 
     // Figure out minimal debounce time for button press
@@ -201,20 +202,36 @@ pub async fn monitor_double_longpress(
     loop {
         // Check both buttons without holding locks for too long
         let b1_pressed = {
-            let button_lock = b1.lock().await;
-            if let Some(button) = button_lock.as_ref() {
-                button.input.get_level() == Level::Low
-            } else {
-                false
+            // Only try to lock for a short 10ms time before giving up
+            match select(b1.lock(), Timer::after(Duration::from_millis(10))).await {
+                Either::First(button_lock) => {
+                    if let Some(button) = button_lock.as_ref() {
+                        button.input.get_level() == Level::Low
+                    } else {
+                        false // Could not acquire lock
+                    }
+                }
+                embassy_futures::select::Either::Second(_) => {
+                    // Couldn't get lock, maintain previous state
+                    b1_pressed_time.is_some()
+                }
             }
         };
 
         let b2_pressed = {
-            let button_lock = b2.lock().await;
-            if let Some(button) = button_lock.as_ref() {
-                button.input.get_level() == Level::Low
-            } else {
-                false
+            // Only try to lock for a short time before giving up
+            match select(b2.lock(), Timer::after(Duration::from_millis(10))).await {
+                Either::First(button_lock) => {
+                    if let Some(button) = button_lock.as_ref() {
+                        button.input.get_level() == Level::Low
+                    } else {
+                        false // Could not acquire lock
+                    }
+                }
+                embassy_futures::select::Either::Second(_) => {
+                    // Couldn't get lock, maintain previous state
+                    b2_pressed_time.is_some()
+                }
             }
         };
 

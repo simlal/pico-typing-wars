@@ -13,6 +13,7 @@ use embassy_futures::select::{select, Either};
 use embassy_rp::watchdog::*;
 use embassy_sync::{blocking_mutex::raw::ThreadModeRawMutex, mutex::Mutex};
 use embassy_time::{Duration, Instant, Ticker, Timer};
+use heapless::{Entry, FnvIndexMap};
 
 use {defmt_rtt as _, panic_probe as _};
 
@@ -21,8 +22,7 @@ use game::{
     GameState,
 };
 use led::{
-    end_round_winner_flashing_pattern, round_playing_leds_routine_on_off, waiting_state_leds, Led,
-    LedRole,
+    highlight_round_winner, round_playing_leds_routine_on_off, waiting_state_leds, Led, LedRole,
 };
 
 // Static watchdog & buttons periphs to allow for tasks
@@ -100,25 +100,41 @@ async fn main(spawner: Spawner) {
         .unwrap();
 
     // TODO: Spawn the DISPLAY task with 1 Hz refresh rate (NO Guarantee)
+    const TOTAL_ROUNDS: usize = 5;
+    let mut round_winner_times: [(Option<ButtonRole>, u64); TOTAL_ROUNDS] =
+        [(None::<ButtonRole>, u64::MIN); TOTAL_ROUNDS];
+
+    let mut players_scores = FnvIndexMap::<ButtonRole, usize, 2>::new();
+    players_scores.insert(ButtonRole::Player1, 0).unwrap();
+    players_scores.insert(ButtonRole::Player2, 0).unwrap();
 
     loop {
         // Take the action based on game state
-        let current_state = get_current_game_state_or_reset().await;
+        let current_state = get_current_game_state_or_reset(&WATCHDOG).await;
 
         // NOTE: Main priority compared to button reset + display refresh
         match current_state {
             GameState::Waiting => {
-                info!("We are waiting!");
-                // waiting_state_leds(&mut leds).await;
+                info!("We are waiting! Resetting scores before next game");
+                // Resetting scores in case we are coming in from a previous game
+                for (role, time) in round_winner_times.iter_mut() {
+                    *role = None;
+                    *time = 0;
+                }
+
+                if let Entry::Occupied(mut o) = players_scores.entry(ButtonRole::Player1) {
+                    *o.get_mut() = 0;
+                }
+                if let Entry::Occupied(mut o) = players_scores.entry(ButtonRole::Player2) {
+                    *o.get_mut() = 0;
+                }
+
                 transition_game_state(GameState::Playing).await;
             }
             GameState::Playing => {
                 info!("We are playing!");
-                let total_rounds = 3;
-                // TODO: player scores + times with heapless?
-                let scores = 0;
-                for i in 0..total_rounds {
-                    info!("Round {}", i);
+                'rounds: for (i, round) in round_winner_times.iter_mut().enumerate() {
+                    info!("Players get ready for round #{}", i);
 
                     // Insure we have both button mutex
                     let mut b1_unlocked = BUTTON_P1.lock().await;
@@ -126,50 +142,72 @@ async fn main(spawner: Spawner) {
                     if let (Some(b1_ref), Some(b2_ref)) =
                         (b1_unlocked.as_mut(), b2_unlocked.as_mut())
                     {
-                        let target_time_press = round_playing_leds_routine_on_off(&mut leds).await;
+                        // Randomized time w/ light ON then OFF + pick first to full press w/ time
+                        let target_time_press =
+                            round_playing_leds_routine_on_off(&mut leds, i).await;
                         let winner_timepress = select(
                             b1_ref.measure_full_press_release(),
                             b2_ref.measure_full_press_release(),
                         )
                         .await;
 
-                        let winner_button = match winner_timepress {
-                            Either::First(_) => {
+                        // Use the button to match the winner led and add it to scores container
+                        let winner = match winner_timepress {
+                            Either::First(p1_release) => {
                                 info!("B1 was faster!");
-                                b1_ref.role()
+                                let p1_score = (p1_release - target_time_press).as_millis();
+                                (b1_ref.role(), p1_score)
                             }
-                            Either::Second(_) => {
+                            Either::Second(p2_release) => {
                                 info!("B2 was faster!");
-                                b2_ref.role()
+                                let p2_score = (p2_release - target_time_press).as_millis();
+                                (b2_ref.role(), p2_score)
                             }
                         };
+                        // Update the player scores
+                        if let Entry::Occupied(mut o) = players_scores.entry(winner.0) {
+                            *o.get_mut() += 1;
+                        }
 
-                        // TODO: Calculate time to press for winner
-
-                        // TODO: implement player score tracking + times
-                        end_round_winner_flashing_pattern(&mut leds, winner_button, i).await;
-
-                        // HOW DO I KNOW which completed??
+                        // Save score and highlight round winner
+                        highlight_round_winner(
+                            &mut leds,
+                            winner.0,
+                            *players_scores.get(&winner.0).unwrap(),
+                        )
+                        .await;
+                        *round = (Some(winner.0), winner.1);
+                        info!(
+                            "DINGINGINGING! Congratulations for {} with a response time of {} ms",
+                            winner.0, winner.1
+                        );
+                        // If we have a winner (best of 5), transition to Computing Results
+                        info!("Current scores: ");
+                        for (player, score) in &players_scores {
+                            info!("{}: {}", player, score);
+                            if *score == 3 {
+                                transition_game_state(GameState::ComputingResults).await;
+                                break 'rounds;
+                            }
+                        }
                     }
-                    // Start random length leds on for game round
+                    info!(
+                        "Target window for ressetting game with long button double press of 2s..."
+                    );
+                    drop(b1_unlocked);
+                    drop(b2_unlocked);
+                    Timer::after_secs(2).await; // Just before starting next round
                 }
-                // leds[1].flash_pattern(Duration::from_secs(2), 1).await;
-
-                // if let Some(button_p1) = (BUTTON_P1.lock().await).as_mut() {
-                //     let press_duration = button_p1.measure_full_press_release().await;
-                //     info!("{}", press_duration.as_millis());
-                //
-                //     info!("1s in playing loop");
-                //     Timer::after_secs(1).await;
-                // }
-                transition_game_state(GameState::Waiting).await;
             }
 
+            GameState::ComputingResults => {
+                info!("Computing results for current game...");
+                game::transition_game_state(GameState::Finished).await;
+            }
             GameState::Finished => {
-                info!("Done testing. Going into wait mode.");
+                info!("Finished the game. Going back into waiting mode.");
                 game::transition_game_state(GameState::Waiting).await;
             }
-            _ => error!("err"),
         }
     }
 }
@@ -188,7 +226,7 @@ async fn _test_debounce_time(_spawner: Spawner) {
     game::initialize_game().await;
     loop {
         // Take the action based on game state
-        let current_state = get_current_game_state_or_reset().await;
+        let current_state = get_current_game_state_or_reset(&WATCHDOG).await;
 
         // NOTE: Main priority compared to button reset + display refresh
         match current_state {
