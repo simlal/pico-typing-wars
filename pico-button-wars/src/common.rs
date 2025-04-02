@@ -20,7 +20,7 @@ impl SimpleRngU64 {
     pub fn new() -> Self {
         // Use the current time as initial seed
         let now = Instant::now();
-        let seed = now.as_micros() as u64;
+        let seed = now.as_micros();
         Self { seed }
     }
 

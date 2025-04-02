@@ -9,10 +9,10 @@ mod led;
 use button::{monitor_double_longpress, Button, ButtonMutex, ButtonRole};
 use defmt::*;
 use embassy_executor::Spawner;
-use embassy_futures::select::{select, Either};
+use embassy_futures::select::{select, select3, Either, Either3};
 use embassy_rp::watchdog::*;
 use embassy_sync::{blocking_mutex::raw::ThreadModeRawMutex, mutex::Mutex};
-use embassy_time::{Duration, Instant, Ticker, Timer};
+use embassy_time::{Duration, Ticker, Timer};
 use heapless::{Entry, FnvIndexMap};
 
 use {defmt_rtt as _, panic_probe as _};
@@ -22,7 +22,8 @@ use game::{
     GameState,
 };
 use led::{
-    highlight_round_winner, round_playing_leds_routine_on_off, waiting_state_leds, Led, LedRole,
+    highlight_game_winner, highlight_round_winner, round_playing_leds_routine_on_off,
+    waiting_state_leds, Led, LedRole,
 };
 
 // Static watchdog & buttons periphs to allow for tasks
@@ -99,8 +100,8 @@ async fn main(spawner: Spawner) {
         .spawn(monitor_double_longpress(&BUTTON_P1, &BUTTON_P2, &WATCHDOG))
         .unwrap();
 
-    // TODO: Spawn the DISPLAY task with 1 Hz refresh rate (NO Guarantee)
     const TOTAL_ROUNDS: usize = 5;
+    const WIN_THRESHOLD: usize = TOTAL_ROUNDS.div_ceil(2);
     let mut round_winner_times: [(Option<ButtonRole>, u64); TOTAL_ROUNDS] =
         [(None::<ButtonRole>, u64::MIN); TOTAL_ROUNDS];
 
@@ -112,7 +113,6 @@ async fn main(spawner: Spawner) {
         // Take the action based on game state
         let current_state = get_current_game_state_or_reset(&WATCHDOG).await;
 
-        // NOTE: Main priority compared to button reset + display refresh
         match current_state {
             GameState::Waiting => {
                 info!("We are waiting! Resetting scores before next game");
@@ -128,7 +128,37 @@ async fn main(spawner: Spawner) {
                 if let Entry::Occupied(mut o) = players_scores.entry(ButtonRole::Player2) {
                     *o.get_mut() = 0;
                 }
+                // Wait for single press on each
+                loop {
+                    waiting_state_leds(&mut leds).await;
 
+                    info!("Press any button within the next 2 seconds to start the game...");
+                    let mut b1_unlocked = BUTTON_P1.lock().await;
+                    let mut b2_unlocked = BUTTON_P2.lock().await;
+                    if let (Some(b1_ref), Some(b2_ref)) =
+                        (b1_unlocked.as_mut(), b2_unlocked.as_mut())
+                    {
+                        match select3(
+                            b1_ref.wait_for_full_press(),
+                            b2_ref.wait_for_full_press(),
+                            Timer::after_secs(2),
+                        )
+                        .await
+                        {
+                            Either3::First(_) => {
+                                info!("Player 1 button pressed, we can start the game!");
+                                break;
+                            }
+                            Either3::Second(_) => {
+                                info!("Player 2 button pressed, we can start the game!");
+                                break;
+                            }
+                            Either3::Third(_) => {
+                                info!("Timeout! going through routine again.")
+                            }
+                        }
+                    }
+                }
                 transition_game_state(GameState::Playing).await;
             }
             GameState::Playing => {
@@ -185,7 +215,7 @@ async fn main(spawner: Spawner) {
                         info!("Current scores: ");
                         for (player, score) in &players_scores {
                             info!("{}: {}", player, score);
-                            if *score == 3 {
+                            if *score == WIN_THRESHOLD {
                                 transition_game_state(GameState::ComputingResults).await;
                                 break 'rounds;
                             }
@@ -202,6 +232,41 @@ async fn main(spawner: Spawner) {
 
             GameState::ComputingResults => {
                 info!("Computing results for current game...");
+                let highest_scorer = players_scores
+                    .iter()
+                    .max_by_key(|&(_, score)| score)
+                    .map(|(player, _)| *player)
+                    .unwrap();
+
+                let mut best_response_time = u64::MAX;
+                let mut worst_response_time = u64::MIN;
+                let mut avg_response_time: u64 = 0;
+
+                for (role, time) in &round_winner_times {
+                    if let Some(r) = role {
+                        if *r == highest_scorer {
+                            // Compute stats for winner
+                            avg_response_time += *time;
+                            if *time < best_response_time {
+                                best_response_time = *time;
+                            }
+                            if *time > worst_response_time {
+                                worst_response_time = *time;
+                            }
+                        }
+                    }
+                }
+                avg_response_time /= WIN_THRESHOLD as u64;
+
+                // Log stats and celebrate winner
+                info!("Winner {} had an avg response time of {} ms (best time {} ms, worst time {} ms",
+                   highest_scorer,
+                    avg_response_time,
+                    best_response_time,
+                    worst_response_time
+                );
+                Timer::after_secs(1).await; // Let us read before transition!
+                highlight_game_winner(&mut leds, highest_scorer).await;
                 game::transition_game_state(GameState::Finished).await;
             }
             GameState::Finished => {

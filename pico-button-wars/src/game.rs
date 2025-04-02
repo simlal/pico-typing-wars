@@ -125,13 +125,13 @@ pub async fn update_current_game_state_duration() {
 }
 
 // NOTE: FUNCTIONAL STYLE example for getting the mutex!
-pub async fn get_current_game_state() -> Option<GameState> {
-    let game_lock = GAME.lock().await;
-    game_lock.as_ref().map(|game| game.state).or_else(|| {
-        warn!("Attempted to get game state but GAME singleton not initialized");
-        None
-    })
-}
+// pub async fn get_current_game_state() -> Option<GameState> {
+//     let game_lock = GAME.lock().await;
+//     game_lock.as_ref().map(|game| game.state).or_else(|| {
+//         warn!("Attempted to get game state but GAME singleton not initialized");
+//         None
+//     })
+// }
 pub async fn get_current_game_state_or_reset(
     wd: &'static Mutex<ThreadModeRawMutex, Option<Watchdog>>,
 ) -> GameState {
@@ -148,7 +148,8 @@ pub async fn get_current_game_state_or_reset(
                 loop {
                     Timer::after_secs(10).await; // Keep the lock forever
                 }
-            };
+            }
+            .await;
             // HACK: Should not be reached, but fallback
             GameState::Waiting
         }

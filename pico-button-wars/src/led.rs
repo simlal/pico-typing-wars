@@ -1,4 +1,4 @@
-use defmt::{debug, error, info, Format};
+use defmt::{debug, info, Format};
 use embassy_rp::gpio::{Level, Output, Pin};
 use embassy_time::{Duration, Instant, Timer};
 
@@ -68,8 +68,6 @@ impl Format for Led<'_> {
 
 // Non concurrent flashing pattern
 pub async fn waiting_state_leds(leds: &'_ mut [Led<'_>; 3]) {
-    debug!("Flashing leds inside waiting_state_leds(): {}", leds);
-
     // First pattern, fast flashes
     let mut duration = Duration::from_millis(200);
     for led in leds.iter_mut() {
@@ -135,12 +133,74 @@ pub async fn highlight_round_winner(
     }
 }
 
+pub async fn highlight_game_winner(leds: &'_ mut [Led<'_>; 3], winner_button: ButtonRole) {
+    // Map button role to LED role
+    let winner_led_role = match winner_button {
+        ButtonRole::Player1 => LedRole::Player1,
+        ButtonRole::Player2 => LedRole::Player2,
+    };
+
+    // buildup
+    for speed in [150, 100, 80, 60, 40, 20].iter() {
+        for led in leds.iter_mut() {
+            led.turn_on();
+            Timer::after_millis(*speed).await;
+            led.turn_off();
+        }
+    }
+
+    // Dramatic pause
+    Timer::after_millis(300).await;
+
+    // Quick flash all LEDs together 3 times
+    for _ in 0..3 {
+        for led in leds.iter_mut() {
+            led.turn_on();
+        }
+        Timer::after_millis(100).await;
+
+        for led in leds.iter_mut() {
+            led.turn_off();
+        }
+        Timer::after_millis(100).await;
+    }
+
+    Timer::after_millis(500).await;
+
+    // Victory pattern highlighting the winner LED
+    let winner_index = leds.iter().position(|led| led.role == winner_led_role);
+
+    if let Some(index) = winner_index {
+        for _ in 0..5 {
+            // Light up winner LED
+            leds[index].turn_on();
+
+            // Blink other LEDs to create spotlight effect
+            for _ in 0..3 {
+                // HACK: AVOID DOUBLE MUTABLE BORROW
+                for i in 0..leds.len() {
+                    if i != index {
+                        leds[i].turn_on();
+                        Timer::after_millis(50).await;
+                        leds[i].turn_off();
+                    }
+                }
+                Timer::after_millis(150).await;
+            }
+
+            // All off for dramatic pause
+            leds[index].turn_off();
+            Timer::after_millis(300).await;
+        }
+    }
+}
 // Turns on, then off for a random time with 'OFF' instant return for calculation of fastest player
 pub async fn round_playing_leds_routine_on_off(
     leds: &'_ mut [Led<'_>; 3],
     current_round: usize,
 ) -> Instant {
     // Signal that round 'i' is about to start then quick blinky
+    info!("Players get ready for round {}", current_round);
     for _ in 0..current_round + 1 {
         for led in leds.iter_mut() {
             led.turn_on();

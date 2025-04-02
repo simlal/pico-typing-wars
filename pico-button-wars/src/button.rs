@@ -67,8 +67,11 @@ impl Button<'_> {
 
     pub async fn measure_full_press_release(&mut self) -> Instant {
         self.wait_for_press().await;
-        let end = self.wait_for_release().await;
-        end
+        return self.wait_for_release().await;
+    }
+
+    pub async fn wait_for_full_press(&mut self) {
+        self.wait_for_press().await;
     }
 
     // Figure out minimal debounce time for button press
@@ -165,10 +168,10 @@ impl Button<'_> {
             avg_transitions, max_debounce_time, iterations
         );
         info!(
-            "Returning 20% over maximum debounce time or default {}",
+            "Returning 10% over maximum debounce time or default {}",
             MIN_DEBOUNCE_DEFAULT_IN_TEST
         );
-        (max_debounce_time + (max_debounce_time / 5)).max(MIN_DEBOUNCE_DEFAULT_IN_TEST)
+        (max_debounce_time + (max_debounce_time / 10)).max(MIN_DEBOUNCE_DEFAULT_IN_TEST)
     }
 }
 
@@ -211,7 +214,7 @@ pub async fn monitor_double_longpress(
                         false // Could not acquire lock
                     }
                 }
-                embassy_futures::select::Either::Second(_) => {
+                Either::Second(_) => {
                     // Couldn't get lock, maintain previous state
                     b1_pressed_time.is_some()
                 }
@@ -228,7 +231,7 @@ pub async fn monitor_double_longpress(
                         false // Could not acquire lock
                     }
                 }
-                embassy_futures::select::Either::Second(_) => {
+                Either::Second(_) => {
                     // Couldn't get lock, maintain previous state
                     b2_pressed_time.is_some()
                 }
@@ -295,6 +298,3 @@ pub async fn monitor_double_longpress(
         ticker.next().await;
     }
 }
-
-//TODO: Button controller
-// TODO: Task for reset
