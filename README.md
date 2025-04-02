@@ -51,7 +51,7 @@ Le projet est divisé en 2 parties:
 Le projet consiste à créer un jeu de rapidité de réponse et de frappe en utilisant la plateforme Raspberry Pi Pico. Le jeu est divisé en deux parties:
 
 1. **Partie 1**: Implémentation primaire d'un jeu de rapidité de temps de réaction avec bouton et LED
-2. **Partie 2**: Implémentation d'un jeu de rapidité de frappe sur un clavier USB avec affichage sur écran LCD
+2. **Partie 2 (TODO)**: Implémentation d'un jeu de rapidité de frappe sur un clavier USB avec affichage sur écran LCD
 
 <!--underline that-->
 
@@ -70,7 +70,7 @@ Le jeu est conçu pour tester la rapidité de réaction et de frappe des joueurs
 
 **À noter**: Implémenter les mécanismes de **reset**, **debounce** etc.
 
-#### Partie 2
+#### Partie 2 (TODO)
 
 La partie 2 est une extension de la partie 1, où le jeu teste la rapidité de frappe des joueurs. Le jeu consiste à prendre
 le gagnant de la partie 1 et le faire jouer à un jeu de rapidité de frappe. Le joueur doit répéter une séquence de caractères
@@ -156,7 +156,7 @@ Ensuite, il existe plusieurs librairies et outils pour le développement Rust su
 - `embedded-hal`: Abstraction des périphériques pour les systèmes embarqués. [GitHub](https://github.com/rust-embedded/embedded-hal)
 - `rp2040-pac`: Périphériques ARM Cortex-M0+ pour le Raspberry Pi Pico. [GitHub](https://github.com/rp-rs/rp2040-pac)
 - `rp-rs/rp-hal`: HAL pour le Raspberry Pi Pico. [GitHub](https://github.com/rp-rs/rp-hal)
-- `embassy-rs`: Framework asynchrone pour les systèmes embarqués. [Site Web Officiel](https://embassy.dev/)
+- `embassy-rs`: Framework asynchrone pour les systèmes embarqués. [Site Web Officiel](https://embassy.dev/) [5]
 
 ### Débuggage avec `probe-rs` et système de build avec `cargo`
 
@@ -396,32 +396,863 @@ Pour la partie 1, nous avons besoin des composants suivants:
 | Fils de connection Jumper | TODO | Pour connecter les composants | < 3$ |
 | LEDs | 2 | Rouge et verte | < 3$ |
 | Resistances | ??? | LEDs=1kOhm, Boutons=10kOhm, ??? | < 3$ |
-| Écran LCD | 1 | 3.2 Inch 320x240 Touch LCD | 20$ |
 
 Pour la partie 2, nous ajoutons un clavier USB pour tester la rapidité de frappe des joueurs et un adapteur.
 
 | Composante(s) | Quantité | Description | Prix |
 | ------------- | -------- | ---------- | ---- |
+| Écran LCD | 1 | 3.2 Inch 320x240 Touch LCD | 20$ |
 | Clavier USB | 1 | Clavier USB | ~10$ |
 | Adapteur OTG | 1 | Conversion USB-A vers micro USB | ~10$ |
 
 ## Pico Button Wars :video_game:
 
-### Partie 1: Rapidité de réaction
+Le projet consiste à créer un jeu de rapidité de réponse et de bouton sur un Raspberry Pi Pico.
+(Je n'ai pas eu le temps de faire la partie 2 donc voici la partie 1 seulement.)
 
-TODO
+### Structure du code
 
-### Partie 2: Rapidité de frappe et affichage
+#### Vue d'ensemble
 
-TODO
+Le code est divisé en plusieurs modules pour faciliter la lecture et la compréhension du code. Les différents modules sont:
 
-## Analyses et résultats :chart_with_upwards_trend:
+- `common.rs`: Module contenant des fonctions utilitaires du projet (i.e. Rng, trait formattage console etc.)
+- `game.rs`: Module contenant la logique du jeu. Contient l'objet principal de jeu pour faire les transitions
+  entre les états du jeu.
+- `led.rs`: Module contenant la logique pour contrôler les LEDs. Contient les fonctions pour allumer et éteindre les LEDs.
+- `button.rs`: Module contenant la logique pour contrôler les boutons. Contient les fonctions pour lire l'état des boutons, gérer le débounce etc.
+- `main.rs`: Fichier source principal du projet. Contient l'initialisation des périphériques et la boucle principale du jeu.
+
+**A NOTER**:
+
+#### `common.rs`
+
+Possiblement un mauvaix choix de nom de module (aurait pu contenir les types génériques, traits communs etc.), mais contient principalement le Rng simpliste:
+
+```rust
+pub struct SimpleRngU64 {
+    seed: u64,
+}
+impl SimpleRngU64 {
+    pub fn new() -> Self {
+        // Use the current time as initial seed
+        let now = Instant::now();
+        let seed = now.as_micros();
+        Self { seed }
+    }
+
+    // Seed update
+    pub fn next_u64(&mut self) -> u64 {
+        const A: u64 = 1664525;
+        const C: u64 = 1013904223;
+        self.seed = self.seed.wrapping_mul(A).wrapping_add(C);
+        self.seed
+    }
+
+    // Linear congruential generator implementation
+    pub fn generate_from_range(&mut self, from: u64, to: u64) -> u64 {
+        if from >= to {
+            return from;
+        }
+        from + (self.next_u64() % (to - from + 1))
+    }
+}
+```
+
+Utile pour avoir un temps de lumière aléatoire pour la LED avant l'éteindre et donc rendre le jeu moins prévisible.
+
+#### `game.rs`
+
+Le module `game.rs` contient la logique du jeu. Il contient les différentes étapes du jeu et les transitions entre les états du jeu.
+On l'utilise comme un singleton statique pour gérer l'état du jeu. Il contient également les fonctions pour gérer les transitions entre les états du jeu.
+
+```rust
+
+type GameMutex = Mutex<CriticalSectionRawMutex, Option<Game>>;
+static GAME: GameMutex = Mutex::new(None);
+
+#[derive(PartialEq, Eq, Format, Clone, Copy)]
+pub enum GameState {
+    Waiting,
+    Playing,
+    ComputingResults,
+    Finished,
+}
+
+// Singleton game instance
+#[derive(Format)]
+struct Game {
+    state: GameState,
+    state_start: Instant,
+    state_duration: Duration,
+}
+
+// Avec les méthodes de gestion de transitions
+fn update_state_duration(&mut self) {...} 
+fn transition(&mut self, next_state: GameState) {...}
+...
+// On accede le singleton avec GAME.lock()
+// Exemple acces au gamestate et reset avec le watchdog
+pub async fn get_current_game_state_or_reset(
+    wd: &'static Mutex<ThreadModeRawMutex, Option<Watchdog>>,
+) -> GameState {
+    let game_lock = GAME.lock().await;
+    match game_lock.as_ref() {
+        Some(game) => game.state,
+        None => {
+            async {
+                warn!(
+                    "Attempted to get game state but GAME singleton not initialized. Resetting..."
+                );
+                // Lock the watchdog to prevent feeding
+                let _lock_forever = wd.lock().await;
+                loop {
+                    Timer::after_secs(10).await; // Keep the lock forever
+                }
+            }
+            .await;
+            // HACK: Should not be reached, but fallback
+            GameState::Waiting
+        }
+    }
+}
+```
+
+#### `led.rs`
+
+Le module `led.rs` contient la logique pour contrôler les LEDs. Il contient les fonctions pour allumer et éteindre les LEDs,
+autant pour les routines de bases que des abstractions pour réfléter l'état du jeu
+
+```rust
+ 
+#[derive(PartialEq, Eq, Format, Clone, Copy)]
+pub enum LedRole {
+    Onboard,
+    Player1,
+    Player2,
+}
+
+// A simple abstraction over an output pin with a role
+pub struct Led<'a> {
+    output: Output<'a>,
+    role: LedRole,
+}
+impl Led<'_> {
+    pub fn new<P: Pin>(pin: P, role: LedRole) -> Self {
+        Self {
+            output: Output::new(pin, Level::Low), // Initialize Output with the pin
+            role,
+        }
+    }
+
+    pub fn turn_on(&mut self) {
+        self.output.set_high();
+    }
+
+    pub fn turn_off(&mut self) {
+        self.output.set_low();
+    }
+
+  // autres ...
+
+}
+
+// Exemple utilise pour la routine publique allumage + eteignage du jeu:
+
+pub async fn round_playing_leds_routine_on_off(
+    leds: &'_ mut [Led<'_>; 3],
+    current_round: usize,
+) -> Instant {
+    // Signal that round 'i' is about to start then quick blinky
+    info!("Players get ready for round {}", current_round);
+    for _ in 0..current_round + 1 {
+        for led in leds.iter_mut() {
+            led.turn_on();
+        }
+        Timer::after_millis(750).await;
+        for led in leds.iter_mut() {
+            led.turn_off();
+        }
+        Timer::after_millis(750).await;
+    }
+    Timer::after_millis(500).await;
+    for _ in 0..4 {
+        for led in leds.iter_mut() {
+            led.turn_on();
+        }
+        Timer::after_millis(150).await;
+        for led in leds.iter_mut() {
+            led.turn_off();
+        }
+        Timer::after_millis(150).await;
+    }
+
+    // Generate random time in ms between 2000-5000 ms for led signal to press button
+    let mut rng = SimpleRngU64::new();
+    let leds_duration = rng.generate_from_range(2000, 5000);
+    info!(
+        "Rng time for LED ON until shutoff for current game round: {} ms. ",
+        leds_duration
+    );
+    for led in leds.iter_mut() {
+        led.turn_on();
+    }
+    Timer::after_millis(leds_duration).await;
+
+    for led in leds.iter_mut() {
+        led.turn_off();
+    }
+    info!("GO!");
+    Instant::now()
+}
+```
+
+#### `button.rs`
+
+Le module `button.rs` contient la logique pour contrôler les boutons. Il contient les fonctions pour lire l'état des boutons,
+avoir une tache pour le 'reset' du jeu (via le jeune du watchdog), evaluer la valeur de 'debounce', attendre et mesure des actions de pressage des boutons.
+
+C'est donc un module qui est important et doit être bien testé pour éviter les faux positifs et les faux négatifs, s'assurer que rien n'est bloqué lors de l'exécution pour l'exécution propre du jeu.
+
+La structure générale du module est la suivante:
+
+```rust
+// Debounce time with prior tests from measure_minimal_debounce()
+const MINIMAL_DEBOUNCE_TIME: u64 = 50;
+
+#[derive(PartialEq, Eq, Format, Clone, Copy, Debug, Hash)]
+pub enum ButtonRole {
+    Player1,
+    Player2,
+}
+
+pub struct Button<'a> {
+    input: Input<'a>,
+    role: ButtonRole,
+    debounce: Duration,
+}
+```
+
+Et les methodes pour autant attendre un appui sur le bouton, que le debounce ou simplement monitorer son état:
+
+```rust
+
+impl Button<'_> {
+    pub fn new<P: Pin>(pin: P, role: ButtonRole) -> Self {
+        Self {
+            input: Input::new(pin, Pull::Up), // Initialize input with pull up
+            role,
+            debounce: Duration::from_millis(MINIMAL_DEBOUNCE_TIME),
+        }
+    }
+
+    pub fn role(&self) -> ButtonRole {
+        self.role
+    }
+
+    async fn wait_for_press(&mut self) -> Instant {
+        loop {
+            self.input.wait_for_falling_edge().await;
+            let press_instant = Instant::now();
+            Timer::after(self.debounce).await;
+            // safety in case debounce not enough
+            if self.input.get_level() == Level::Low {
+                info!("{} button pressed.", self.role);
+                return press_instant;
+            }
+        }
+    }
+
+    async fn wait_for_release(&mut self) -> Instant {
+        loop {
+            self.input.wait_for_low().await;
+            let release_instant = Instant::now();
+            Timer::after(self.debounce).await;
+            // safety in case debounce not enough
+            if self.input.get_level() == Level::High {
+                info!("{} button released.", self.role);
+                return release_instant;
+            }
+        }
+    }
+
+    pub async fn measure_full_press_release(&mut self) -> Instant {
+        self.wait_for_press().await;
+        return self.wait_for_release().await;
+    }
+
+  // Autres methodes...
+}
+```
+
+##### Debounce test
+
+J'ai tout d'abord effectuer des tests pour mesurer notre _worst case debounce time_ pour le bouton, mais tout en évaluant si le comportent du bouton était acceptable.
+
+En utilisant cette routine de test, on evalue le temps de debounce minimal pour le bouton. On peut l'utiliser pour ajuster la valeur de debounce dans le code du jeu apres comme variable `const` lors de la construction d'une instance de `Button`:
+
+```rust
+
+pub async fn measure_minimal_debounce(&mut self, ms_test_range: u64, iterations: usize) -> u64 {
+    const MIN_DEBOUNCE_DEFAULT_IN_TEST: u64 = 50;
+    info!(
+        "Measuring debounce for {} Button with {} ms max and averaging over {}",
+        self.role, ms_test_range, iterations
+    );
+    let mut total_transitions = 0;
+    let mut max_debounce_time = 0;
+    for i in 0..iterations {
+        // Wait for an initial press
+        self.input.wait_for_low().await;
+        info!("Button pressed! Measuring minimal debounce time");
+
+        // Debounce
+        let mut transitions = 0;
+        let mut last_level = Level::Low; // We just checked its low
+
+        let start_time = Instant::now();
+        let mut last_transition_time = start_time;
+        let mut longest_debounce = Duration::from_millis(0);
+        // Fix: Add duration to start_time instead of subtracting
+        let end_time = start_time + Duration::from_millis(ms_test_range);
+
+        // Evaluate max transition time
+        while Instant::now() < end_time {
+            let current_level = self.input.get_level();
+            if current_level != last_level {
+                transitions += 1;
+                let now = Instant::now();
+
+                // No need to debounce if no transitions
+                if transitions > 1 {
+                    let bounce_duration = now - last_transition_time;
+                    if bounce_duration > longest_debounce {
+                        longest_debounce = bounce_duration;
+                        debug!("New longest debounce: {} ms", bounce_duration.as_millis());
+                    }
+                }
+
+                last_transition_time = now;
+                debug!(
+                    "Transition #{} detected from {} to {} at {} ms from test start.",
+                    transitions,
+                    self.level_to_str(&last_level),
+                    self.level_to_str(&current_level),
+                    (last_transition_time - start_time).as_millis()
+                );
+                last_level = current_level;
+            }
+
+            // Small delay to prevent tight CPU looping
+            Timer::after_micros(50).await;
+        }
+
+        info!(
+            "Detected {} transitions in iteration {}",
+            transitions,
+            i + 1
+        );
+        if transitions > 0 {
+            info!(
+                "Longest debounce interval: {}ms",
+                longest_debounce.as_millis()
+            );
+            max_debounce_time = max_debounce_time.max(longest_debounce.as_millis());
+        }
+
+        total_transitions += transitions;
+
+        info!(
+            "Found {} transitions with longest_debounce time of {} ms for test iteration i={}",
+            transitions,
+            longest_debounce.as_millis(),
+            i
+        );
+
+        // Wait for button release before next iteration
+        if i < iterations - 1 {
+            self.input.wait_for_high().await;
+            // Add delay between tests
+            Timer::after_millis(500).await;
+        }
+    }
+    // Compute summary
+    let avg_transitions = if iterations > 0 {
+        total_transitions / iterations as u64
+    } else {
+        0
+    };
+    info!(
+        "Summary: Avg transitions={}, longest_debounce_time={} ms over {} iterations.",
+        avg_transitions, max_debounce_time, iterations
+    );
+    info!(
+        "Returning 10% over maximum debounce time or default {}",
+        MIN_DEBOUNCE_DEFAULT_IN_TEST
+    );
+    (max_debounce_time + (max_debounce_time / 10)).max(MIN_DEBOUNCE_DEFAULT_IN_TEST)
+}
+
+```
+
+Ainsi, en appelant la fonction sur chacun des boutons, plusieurs fois avec au moins 10 itérations, on peut évaluer le temps de debounce minimal pour le bouton. On peut ensuite l'utiliser pour ajuster la valeur de debounce dans le code du jeu apres comme variable `const` lors de la construction d'une instance de `Button`.
+
+J'ai donc évaluer que dans le pire cas en général, une valeur de 50 ms serait adéquate (la majorité des tests étaient bas de )s 50ms, mais il y avait quelques cas de ~100ms, donc j'ai décidé de prendre la valeur de 50ms pour le debounce.
+
+##### Tâche asynchrone pour monitorer les boutons (_reset_)
+
+Puisque nous voulons _spawn_ une tache asynchrone pour les boutons avec _Embassy_, nous avons besoin d'avoir une reference statique pour chacun des boutons (donc _lifetime_ du programme en entier). Ainsi, lorsque n'importe quelle ressource veut acceder à un bouton, il doit le faire via un _Mutex_.
+
+```rust
+
+// Could be subject to interrupt but OK for now
+pub type ButtonMutex = Mutex<ThreadModeRawMutex, Option<Button<'static>>>;
+
+// Dans le main.rs on a une initilisation ou on fait crash s'il y a un pepin!
+static BUTTON_P1: ButtonMutex = Mutex::new(None);
+static BUTTON_P2: ButtonMutex = Mutex::new(None);
+{
+  let mut button_p1_unlocked = BUTTON_P1.lock().await;
+  *button_p1_unlocked = Some(Button::new(p.PIN_10, ButtonRole::Player1));
+
+  let mut button_p2_unlocked = BUTTON_P2.lock().await;
+  *button_p2_unlocked = Some(Button::new(p.PIN_11, ButtonRole::Player2));
+
+  // Making sure we panic if unproperly init
+  match *button_p1_unlocked {
+      None => crate::panic!("Could not initialize player 1 button."),
+      Some(_) => info!("Initialized 'BUTTON_P1'  as static shareable thread-safe ref",),
+  }
+  match *button_p2_unlocked {
+      None => crate::panic!("Could not initialize player 2 button."),
+      Some(_) => info!("Initialized 'BUTTON_P2'  as static shareable thread-safe ref",),
+  }
+}
+```
+
+**Tache pour monitorer un appui simultané sur les 2 boutons afin de déclencher un reset via le _Watchdog_:**
+
+Ici, nous avons une tache asynchrone qui monitor les 2 boutons et qui déclenche un reset si les 2 boutons sont pressés en même temps pendant plus de 3 secondes.
+On essai de ne pas bloquer le mutex trop longtemps pour éviter de bloquer le jeu. On utilise un `select` pour monitorer chacun des boutons en même temps, qui permet de voir lequel des _futures_ est terminé en premier (et sinon lâcher le mutex rapidement en sortant de la portée).
+
+En évaluant les changements d'états et en mettant à jour les temps de pressions, on peut monitorer si les 2 boutons sont pressés en même temps pendant plus de 3 secondes. Si oui, on déclenche un reset via le _Watchdog_.
+
+```rust
+
+#[embassy_executor::task(pool_size = 1)]
+pub async fn monitor_double_longpress(
+    b1: &'static ButtonMutex,
+    b2: &'static ButtonMutex,
+    wd: &'static Mutex<ThreadModeRawMutex, Option<Watchdog>>,
+) {
+    // Less-blocking approach with 50 ms polling on button mutex
+    let mut ticker = Ticker::every(Duration::from_millis(50));
+
+    // Track long press state
+    let mut b1_pressed_time: Option<Instant> = None;
+    let mut b2_pressed_time: Option<Instant> = None;
+    let mut reset_countdown_active = false;
+
+    loop {
+        // Check both buttons without holding locks for too long
+        let b1_pressed = {
+            // Only try to lock for a short 10ms time before giving up
+            match select(b1.lock(), Timer::after(Duration::from_millis(10))).await {
+                Either::First(button_lock) => {
+                    if let Some(button) = button_lock.as_ref() {
+                        button.input.get_level() == Level::Low
+                    } else {
+                        false // Could not acquire lock
+                    }
+                }
+                Either::Second(_) => {
+                    // Couldn't get lock, maintain previous state
+                    b1_pressed_time.is_some()
+                }
+            }
+        };
+
+        let b2_pressed = {
+            // Only try to lock for a short time before giving up
+            match select(b2.lock(), Timer::after(Duration::from_millis(10))).await {
+                Either::First(button_lock) => {
+                    if let Some(button) = button_lock.as_ref() {
+                        button.input.get_level() == Level::Low
+                    } else {
+                        false // Could not acquire lock
+                    }
+                }
+                Either::Second(_) => {
+                    // Couldn't get lock, maintain previous state
+                    b2_pressed_time.is_some()
+                }
+            }
+        };
+
+        // Update press times
+        if b1_pressed && b1_pressed_time.is_none() {
+            b1_pressed_time = Some(Instant::now());
+            debug!("Button 1 pressed");
+        }
+
+        if b2_pressed && b2_pressed_time.is_none() {
+            b2_pressed_time = Some(Instant::now());
+            debug!("Button 2 pressed");
+        }
+
+        // Check for button releases
+        if !b1_pressed && b1_pressed_time.is_some() {
+            let duration = b1_pressed_time.unwrap().elapsed();
+            debug!("Button 1 released after {} ms", duration.as_millis());
+            b1_pressed_time = None;
+            reset_countdown_active = false;
+        }
+
+        if !b2_pressed && b2_pressed_time.is_some() {
+            let duration = b2_pressed_time.unwrap().elapsed();
+            debug!("Button 2 released after {} ms", duration.as_millis());
+            b2_pressed_time = None;
+            reset_countdown_active = false;
+        }
+
+        // Check for longpress condition
+        if let (Some(t1), Some(t2)) = (b1_pressed_time, b2_pressed_time) {
+            let b1_duration = t1.elapsed();
+            let b2_duration = t2.elapsed();
+
+            if !reset_countdown_active
+                && b1_duration.as_millis() >= 1000
+                && b2_duration.as_millis() >= 1000
+            {
+                reset_countdown_active = true;
+                info!(
+                    "Both buttons held for 1+ second. Continuing to monitor for reset threshold..."
+                );
+            }
+
+            // Check if press duration is enough to trigger reset
+            if b1_duration.as_millis() >= 3000 && b2_duration.as_millis() >= 3000 {
+                info!(
+                    "Long press detected on both buttons (b1={} ms, b2={} ms). Resetting via watchdog...",
+                    b1_duration.as_millis(),
+                    b2_duration.as_millis()
+                );
+
+                // Lock the watchdog to prevent feeding
+                let _lock_forever = wd.lock().await;
+                loop {
+                    Timer::after_secs(10).await; // Keep the lock forever
+                }
+            }
+        }
+
+        ticker.next().await;
+    }
+}
+```
+
+#### `main.rs`
+
+La logique principale du projet est dans le fichier `main.rs`. Il contient l'initialisation des périphériques, la boucle principale du jeu et les tâches asynchrones.
+
+En utilisant l'exécuteur `embassy`, on peut facilement créer des tâches asynchrones pour gérer les boutons et le watchdog, utiliser les timers et des attentes de réponses à des _futures_. Cet API est compatible avec les HAL et PAC de `rp-rs` et `embedded-hal`, les librairies pour les conteneurs sur la pile `heapless` et autres ressources en programmation embarquées.
+
+Le main est décoré du feature flag `#[embassy_executor::main]` qui permet de spécifier la fonction principale du programme. Il est important de noter que nous n'utilisons pas la fonction `main` de Rust, mais plutôt la fonction `embassy_executor::main` qui est fournie par le framework `embassy-rs`.
+
+Nous avons donc accès au spawner de l'exécuteur `embassy` pour créer des tâches asynchrones.
+
+```rust
+
+#[embassy_executor::main]
+async fn main(spawner: Spawner) {...}
+```
+
+##### Initialisation et lancement de tâches asynchrones
+
+Nous devons donc premièrement initialiser les périphériques du pico. Nous avons besoin de:
+
+- 3 LEDS: (onboard, player1, player2)
+- 2 boutons: (player1, player2)
+
+Et nos instances globales:
+
+- 1 watchdog: (pour le reset du jeu)
+- 1 Game: (la logique du jeu)
+
+Finalement nos conteneurs pour les règles et scores (sur la pile évidemment):
+
+```rust
+const TOTAL_ROUNDS: usize = 5;
+const WIN_THRESHOLD: usize = TOTAL_ROUNDS.div_ceil(2);
+let mut round_winner_times: [(Option<ButtonRole>, u64); TOTAL_ROUNDS] =
+    [(None::<ButtonRole>, u64::MIN); TOTAL_ROUNDS];
+
+let mut players_scores = FnvIndexMap::<ButtonRole, usize, 2>::new();
+players_scores.insert(ButtonRole::Player1, 0).unwrap();
+players_scores.insert(ButtonRole::Player2, 0).unwrap();
+```
+
+Ceci est exécuté avant la boucle de jeu principale. On fait paniquer le programme si l'initialisation échoue.
+
+Nous pouvons ainsi lancer notre watchdog nourris a toutes les 500 ms avec un temps de jeune de 3s, ce qui laisse le temps de faire un reset si les 2 boutons sont pressés en même temps pendant plus de 3 secondes, reset au cas ou il serait bloqué ailleurs:
+
+```rust
+#[embassy_executor::task(pool_size = 1)]
+pub async fn feed_watchdog(
+    wd: &'static Mutex<ThreadModeRawMutex, Option<Watchdog>>,
+    feed_schedule: Duration,
+) {
+    let mut ticker = Ticker::every(feed_schedule);
+    loop {
+        {
+            let mut wd_unlocked = wd.lock().await;
+            if let Some(wd) = wd_unlocked.as_mut() {
+                wd.feed();
+                // info!("watchdog fed")
+            }
+        } // watchdog lock dropped here
+        ticker.next().await;
+    }
+}
+```
+
+Tel que mentionné plus haut, nous avons aussi une tâche asynchrone pour monitorer les boutons et faire un reset si les 2 boutons sont pressés en même temps pendant plus de 3 secondes qui ira bloqué l'accès au watchdog et va naturellement le starve donc declencher un reset.
+
+##### Boucle principale du jeu
+
+Nous avons donc 4 états principaux selon le `GameState` enum:
+
+- `Waiting`: En attente de l'appui sur le bouton pour commencer le jeu
+- `Playing`: En train de jouer
+- `ComputingResults`: En train de calculer les résultats
+- `Finished`: Le jeu est terminé. On recommence
+
+**Mode _Waiting_**:
+
+La première étape est d'évaluer l'état du GameState à chaque début de la boucle de jeu et d'effectuer la transition vers le prochain état en fonction du `match`
+
+```rust
+GameState::Waiting => {
+  info!("We are waiting! Resetting scores before next game");
+  // Resetting scores in case we are coming in from a previous game
+  for (role, time) in round_winner_times.iter_mut() {
+    *role = None;
+    *time = 0;
+  }
+
+  if let Entry::Occupied(mut o) = players_scores.entry(ButtonRole::Player1) {
+    *o.get_mut() = 0;
+  }
+  if let Entry::Occupied(mut o) = players_scores.entry(ButtonRole::Player2) {
+    *o.get_mut() = 0;
+  }
+  // Wait for single press on each
+  loop {
+    waiting_state_leds(&mut leds).await;
+
+    info!("Press any button within the next 2 seconds to start the game...");
+    let mut b1_unlocked = BUTTON_P1.lock().await;
+    let mut b2_unlocked = BUTTON_P2.lock().await;
+    if let (Some(b1_ref), Some(b2_ref)) =
+    (b1_unlocked.as_mut(), b2_unlocked.as_mut())
+    {
+      match select3(
+        b1_ref.wait_for_full_press(),
+        b2_ref.wait_for_full_press(),
+        Timer::after_secs(2),
+      )
+      .await
+      {
+        Either3::First(_) => {
+          info!("Player 1 button pressed, we can start the game!");
+          break;
+        }
+        Either3::Second(_) => {
+          info!("Player 2 button pressed, we can start the game!");
+          break;
+        }
+        Either3::Third(_) => {
+          info!("Timeout! going through routine again.")
+        }
+      }
+    }
+  }
+  transition_game_state(GameState::Playing).await;
+}
+```
+
+Le mode Waiting (Attente) prépare le jeu pour une nouvelle partie et attend le déclenchement du début de jeu. Ce mode:
+
+- Réinitialise complètement les scores et les temps des joueurs précédents
+- Remet à zéro les compteurs pour les deux joueurs
+- Active un motif lumineux distinctif sur les LEDs indiquant l'état d'attente
+- Entre dans une séquence d'invitation où:
+  - Un message invite les joueurs à appuyer sur un bouton dans les 2 secondes
+  - Le système surveille simultanément trois événements possibles:
+    - Pression complète du bouton du joueur 1
+    - Pression complète du bouton du joueur 2
+    - Expiration du délai de 2 secondes
+  - Si un joueur appuie sur son bouton, le jeu peut commencer et passe au mode Playing
+  - Si aucun bouton n'est pressé dans le délai imparti, la séquence d'invitation recommence
+
+Cette phase d'attente garantit que le jeu démarre dans des conditions équitables avec une réinitialisation complète des scores, tout en offrant une interface utilisateur intuitive pour lancer une nouvelle partie.
+
+**Mode _Playing_**:
+
+Le mode Playing (Jeu) est le cœur du jeu où les joueurs s'affrontent. Ce mode:
+
+1. Indique que le jeu est en cours et prépare les joueurs pour le premier tour.
+2. Pour chaque tour, il exécute une séquence de préparation:
+   - Les LEDs clignotent pour signaler le début du tour.
+   - Un temps aléatoire est généré pour allumer la LED.
+   - Les joueurs doivent appuyer sur leur bouton dès que la LED s'éteint.
+3. Le système surveille les deux boutons pour déterminer lequel des joueurs a réagi le plus rapidement.
+4. Le gagnant du tour est déterminé en fonction du temps de réaction et est enregistré.
+5. Les scores des joueurs sont mis à jour et affichés.
+6. Si on a un gagnant (meilleur de 5, mais modifiable dans le code), le jeu passe à l'état _ComputingResults_.
+
+On laisse le temps de 2 secondes entre chaque tour pour permettre aux joueurs de se préparer et d'appeler le reset au besoin.
+
+On bloque le mutex des boutons pour éviter de d'interférer avec le jeu, mais on s'assure de le libérer rapidement après chaque tour.
+
+```rust
+GameState::Playing => {
+  info!("We are playing!");
+  'rounds: for (i, round) in round_winner_times.iter_mut().enumerate() {
+    info!("Players get ready for round #{}", i);
+
+    // Insure we have both button mutex
+    let mut b1_unlocked = BUTTON_P1.lock().await;
+    let mut b2_unlocked = BUTTON_P2.lock().await;
+    if let (Some(b1_ref), Some(b2_ref)) =
+    (b1_unlocked.as_mut(), b2_unlocked.as_mut())
+    {
+      // Randomized time w/ light ON then OFF + pick first to full press w/ time
+      let target_time_press =
+      round_playing_leds_routine_on_off(&mut leds, i).await;
+      let winner_timepress = select(
+        b1_ref.measure_full_press_release(),
+        b2_ref.measure_full_press_release(),
+      )
+      .await;
+
+      // Use the button to match the winner led and add it to scores container
+      let winner = match winner_timepress {
+        Either::First(p1_release) => {
+          info!("B1 was faster!");
+          let p1_score = (p1_release - target_time_press).as_millis();
+          (b1_ref.role(), p1_score)
+        }
+        Either::Second(p2_release) => {
+          info!("B2 was faster!");
+          let p2_score = (p2_release - target_time_press).as_millis();
+          (b2_ref.role(), p2_score)
+        }
+      };
+      // Update the player scores
+      if let Entry::Occupied(mut o) = players_scores.entry(winner.0) {
+        *o.get_mut() += 1;
+      }
+
+      // Save score and highlight round winner
+      highlight_round_winner(
+        &mut leds,
+        winner.0,
+        *players_scores.get(&winner.0).unwrap(),
+      )
+      .await;
+      *round = (Some(winner.0), winner.1);
+      info!(
+        "DINGINGINGING! Congratulations for {} with a response time of {} ms",
+        winner.0, winner.1
+      );
+      // If we have a winner (best of 5), transition to Computing Results
+      info!("Current scores: ");
+      for (player, score) in &players_scores {
+        info!("{}: {}", player, score);
+        if *score == WIN_THRESHOLD {
+          transition_game_state(GameState::ComputingResults).await;
+          break 'rounds;
+        }
+      }
+    }
+    info!(
+    "Target window for ressetting game with long button double press of 2s..."
+  );
+    drop(b1_unlocked);
+    drop(b2_unlocked);
+    Timer::after_secs(2).await; // Just before starting next round
+  }
+}
+```
+
+**Mode _ComputingResults_**:
+
+On calcule les résultats du jeu et on affiche le gagnant. On utilise les temps de réponse des joueurs pour déterminer le meilleur joueur et on affiche les statistiques de la partie. La routine de flashage des LEDs est utilisée pour mettre en valeur le gagnant.
+
+```rust
+GameState::ComputingResults => {
+  info!("Computing results for current game...");
+  let highest_scorer = players_scores
+    .iter()
+    .max_by_key(|&(_, score)| score)
+    .map(|(player, _)| *player)
+    .unwrap();
+
+  let mut best_response_time = u64::MAX;
+  let mut worst_response_time = u64::MIN;
+  let mut avg_response_time: u64 = 0;
+
+  for (role, time) in &round_winner_times {
+    if let Some(r) = role {
+      if *r == highest_scorer {
+        // Compute stats for winner
+        avg_response_time += *time;
+        if *time < best_response_time {
+          best_response_time = *time;
+        }
+        if *time > worst_response_time {
+          worst_response_time = *time;
+        }
+      }
+    }
+  }
+  avg_response_time /= WIN_THRESHOLD as u64;
+
+  // Log stats and celebrate winner
+  info!("Winner {} had an avg response time of {} ms (best time {} ms, worst time {} ms",
+    highest_scorer,
+    avg_response_time,
+    best_response_time,
+    worst_response_time
+  );
+  Timer::after_secs(1).await; // Let us read before transition!
+  highlight_game_winner(&mut leds, highest_scorer).await;
+  game::transition_game_state(GameState::Finished).await;
+}
+
+```
+
+**Mode _Finished_**:
+
+Un simple reset vers le mode Attente.
+
+```rust
+GameState::Finished => {
+  info!("Finished the game. Going back into waiting mode.");
+  game::transition_game_state(GameState::Waiting).await;
+}
+```
+
+## Démo :movie_camera:
 
 TODO
 
 ## Conclusion :checkered_flag:
 
-TODO
+Sommes toutes, le projet est un bon exemple de l'utilisation de Rust pour la programmation embarquée. Il utilise les concepts de base de Rust, tels que les traits, les énumérations et les structures, la gestion des erreurs et valeurs null (`Option` et `Result` enums) pour créer un jeu simple mais amusant. Le projet utilise également des concepts avancés tels que les tâches asynchrones et les mutex pour gérer la concurrence et la synchronisation entre les différentes parties du code.
+
+J'aurais pu créer des abstractions plus sophistiquées pour gérer les boutons et les LEDs, notamment en utilisant un système d'interruptions et en implémentant une priorisation entre les tâches avec une gestion plus fine des mutex. Cependant, j'ai privilégié la simplicité et la lisibilité du code pour ce projet. Les constantes utilisées pour les temps de debounce et les délais d'attente pourraient également être rendues configurables dans une version future, offrant ainsi plus de flexibilité sans sacrifier la robustesse du système.
 
 ## References :books:
 
@@ -431,3 +1262,5 @@ TODO
 <a id="1">[1]</a> **The Rust Programming Language**. Klabnik, Steve, and Carol Nichols. 2nd ed., No Starch Press.
 <a id="2">[2]</a> **Industry and academia support**. Rust For Linux. 2024. <https://rust-for-linux.com/industry-and-academia-support>
 <a id="3">[3]</a> **The Embedded Rust Book**. Rust Embedded Working Group. 2024. <https://docs.rust-embedded.org/book/>
+<a id="4">[4]</a> **Rust Embedded**. Rust Embedded Working Group. 2024. <https://rust-embedded.github.io/book/>
+<a id="5">[5]</a> **Embassy**. Embassy. 2024. <https://embassy.dev/>
