@@ -10,7 +10,7 @@ Le projet est divisé en 2 parties:
 1. **Partie 1**: Implémentation primaire d'un jeu de rapidité de temps de réaction avec bouton et LED
 2. **Partie 2 (optionnel)**: Implémentation d'un jeu de rapidité de frappe sur un clavier USB avec affichage sur écran LCD
 
-Voir la [démonstration pour la partie 1 ici](#démo-moviecamera)
+**TLDR:** Voir la [démonstration pour la partie 1 ici](#démo-moviecamera)
 
 ## Table des matières
 
@@ -66,7 +66,7 @@ Le projet consiste à créer un jeu de rapidité de réponse et de frappe en uti
 1. **Partie 1**: Implémentation primaire d'un jeu de rapidité de temps de réaction avec bouton et LED
 2. **Partie 2 (TODO)**: Implémentation d'un jeu de rapidité de frappe sur un clavier USB avec affichage sur écran LCD
 
-<!--underline that-->
+**TLDR:** Voir la [démonstration pour la partie 1 ici](#démo-moviecamera)
 
 #### Partie 1
 
@@ -80,8 +80,6 @@ Le jeu est conçu pour tester la rapidité de réaction et de frappe des joueurs
 4. Mesurer le temps de réaction et déclarer le gagnant
 5. Faire clignoter la LED du gagnant
 6. Répéter le jeu.
-
-**À noter**: Implémenter les mécanismes de **reset**, **debounce** etc.
 
 #### Partie 2 (TODO)
 
