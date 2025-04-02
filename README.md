@@ -1255,7 +1255,273 @@ GameState::Finished => {
 
 ## Démo :movie_camera:
 
-TODO
+### Exemple d'une partie
+
+[Vidéo de démonstration](https://youtube.com/shorts/mJzi2ivcp6k?feature=share)
+
+Et les logs correspondant:
+
+```text
+pico-button-wars/pico-button-wars on  main is 󰏗 v0.1.0 via 󱘗 v1.85.0-nightly took 5s
+❯ cargo run --release
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.14s
+     Running `probe-rs run --chip RP2040 --log-format '{t} - {f} [{L:<4}]  {s}
+' target/thumbv6m-none-eabi/release/pico-button-wars`
+      Erasing ✔ 100% [####################]  24.00 KiB @  61.93 KiB/s (took 0s)
+  Programming ✔ 100% [####################]  24.00 KiB @  44.36 KiB/s (took 1s)                                                                                                    Finished in 0.94s
+0.000597 - main.rs [INFO]  Raspberry Pi Pico init in main executor...
+
+0.000314 - main.rs [INFO]  Initialized 'WATCHDOG'  as static shareable thread-safe ref
+
+0.000338 - main.rs [INFO]  Started watchdog on feed scheduale of 3 s
+
+0.000409 - main.rs [INFO]  Initializing Led { role: Onboard, output_level=Low }...
+
+0.000471 - main.rs [INFO]  Initializing Led { role: Player1, output_level=Low }...
+
+0.000513 - main.rs [INFO]  Initializing Led { role: Player2, output_level=Low }...
+
+0.000583 - main.rs [INFO]  Initialized 'BUTTON_P1'  as static shareable thread-safe ref
+
+0.000600 - main.rs [INFO]  Initialized 'BUTTON_P2'  as static shareable thread-safe ref
+
+0.000631 - game.rs [INFO]  GAME mutex init.
+
+0.000655 - main.rs [INFO]  OK for Game Singleton.
+
+################ WAITING ################
+
+0.000682 - game.rs [DEBUG]  Current GameState=Waiting, started=0 ms from boot with current-duration=0 ms
+
+0.000819 - main.rs [INFO]  We are waiting! Resetting scores before next game
+
+6.126485 - main.rs [INFO]  Press any button within the next 2 seconds to start the game...
+
+8.126529 - main.rs [INFO]  Timeout! going through routine again.
+
+12.600970 - button.rs [DEBUG]  Button 1 pressed
+
+12.750974 - button.rs [DEBUG]  Button 1 released after 150 ms
+
+14.252103 - main.rs [INFO]  Press any button within the next 2 seconds to start the game...
+
+14.532480 - button.rs [INFO]  Player1 button pressed.
+
+14.532510 - main.rs [INFO]  Player 1 button pressed, we can start the game!
+
+14.532548 - game.rs [DEBUG]  Current GameState=Waiting, started=0 ms from boot with current-duration=14531 ms
+
+14.532606 - game.rs [INFO]  Current state duration before transition=Waiting->Playing: 14531 ms
+
+################ PLAYING ################
+
+14.532656 - game.rs [INFO]  Transition finished: Game { state: Playing, state_start: Instant { ticks: 14532650 }, state_duration: Duration { ticks: 14531919 } }
+
+14.532727 - main.rs [INFO]  We are playing!
+
+14.532752 - main.rs [INFO]  Players get ready for round #0
+
+14.532793 - led.rs [INFO]  Players get ready for round 0
+
+17.732975 - led.rs [INFO]  Rng time for LED ON until shutoff for current game round: 4042 ms.
+
+21.775029 - led.rs [INFO]  GO!
+
+22.254500 - button.rs [INFO]  Player1 button pressed.
+
+22.304557 - button.rs [INFO]  Player1 button released.
+
+22.304586 - main.rs [INFO]  B1 was faster!
+
+23.704803 - led.rs [DEBUG]  Blinking winner Led { role: Player1, output_level=Low } for current_score: 1
+
+24.704890 - main.rs [INFO]  DINGINGINGING! Congratulations for Player1 with a response time of 479 ms
+
+24.704929 - main.rs [INFO]  Current scores:
+
+24.704955 - main.rs [INFO]  Player1: 1
+
+24.704991 - main.rs [INFO]  Player2: 0
+
+24.705023 - main.rs [INFO]  Target window for ressetting game with long button double press of 2s...
+
+26.705060 - main.rs [INFO]  Players get ready for round #1
+
+26.705089 - led.rs [INFO]  Players get ready for round 1
+
+31.405226 - led.rs [INFO]  Rng time for LED ON until shutoff for current game round: 2871 ms.
+
+34.276266 - led.rs [INFO]  GO!
+
+34.825871 - button.rs [INFO]  Player2 button pressed.
+
+34.875916 - button.rs [INFO]  Player2 button released.
+
+34.875943 - main.rs [INFO]  B2 was faster!
+
+36.276117 - led.rs [DEBUG]  Blinking winner Led { role: Player2, output_level=Low } for current_score: 1
+
+37.276189 - main.rs [INFO]  DINGINGINGING! Congratulations for Player2 with a response time of 549 ms
+
+37.276227 - main.rs [INFO]  Current scores:
+
+37.276248 - main.rs [INFO]  Player1: 1
+
+37.276281 - main.rs [INFO]  Player2: 1
+
+37.276313 - main.rs [INFO]  Target window for ressetting game with long button double press of 2s...
+
+39.276343 - main.rs [INFO]  Players get ready for round #2
+
+39.276372 - led.rs [INFO]  Players get ready for round 2
+
+45.476515 - led.rs [INFO]  Rng time for LED ON until shutoff for current game round: 4675 ms.
+
+50.151552 - led.rs [INFO]  GO!
+
+50.549276 - button.rs [INFO]  Player1 button pressed.
+
+50.649336 - button.rs [INFO]  Player1 button released.
+
+50.649361 - main.rs [INFO]  B1 was faster!
+
+52.049532 - led.rs [DEBUG]  Blinking winner Led { role: Player1, output_level=Low } for current_score: 2
+
+54.049618 - main.rs [INFO]  DINGINGINGING! Congratulations for Player1 with a response time of 447 ms
+
+54.049655 - main.rs [INFO]  Current scores:
+
+54.049675 - main.rs [INFO]  Player1: 2
+
+54.049706 - main.rs [INFO]  Player2: 1
+
+54.049739 - main.rs [INFO]  Target window for ressetting game with long button double press of 2s...
+
+56.049769 - main.rs [INFO]  Players get ready for round #3
+
+56.049798 - led.rs [INFO]  Players get ready for round 3
+
+63.749952 - led.rs [INFO]  Rng time for LED ON until shutoff for current game round: 4295 ms.
+
+68.044989 - led.rs [INFO]  GO!
+
+68.612813 - button.rs [INFO]  Player1 button pressed.
+
+68.712872 - button.rs [INFO]  Player1 button released.
+
+68.712896 - main.rs [INFO]  B1 was faster!
+
+70.113065 - led.rs [DEBUG]  Blinking winner Led { role: Player1, output_level=Low } for current_score: 3
+
+73.113164 - main.rs [INFO]  DINGINGINGING! Congratulations for Player1 with a response time of 617 ms
+
+73.113200 - main.rs [INFO]  Current scores:
+
+73.113220 - main.rs [INFO]  Player1: 3
+
+73.113260 - game.rs [DEBUG]  Current GameState=Playing, started=14532 ms from boot with current-duration=58580 ms
+
+73.113314 - game.rs [INFO]  Current state duration before transition=Playing->ComputingResults: 58580 ms
+
+73.113361 - game.rs [INFO]  Transition finished: Game { state: ComputingResults, state_start: Instant { ticks: 73113357 }, state_duration: Duration { ticks: 58580607 } }
+
+################ COMPUTING RESULTS ################
+
+73.113429 - main.rs [INFO]  Computing results for current game...
+
+73.113481 - main.rs [INFO]  Winner Player1 had an avg response time of 514 ms (best time 447 ms, worst time 617 ms
+
+82.114188 - game.rs [DEBUG]  Current GameState=ComputingResults, started=73113 ms from boot with current-duration=9000 ms
+
+82.114247 - game.rs [INFO]  Current state duration before transition=ComputingResults->Finished: 9000 ms
+
+82.114293 - game.rs [INFO]  Transition finished: Game { state: Finished, state_start: Instant { ticks: 82114290 }, state_duration: Duration { ticks: 9000824 } }
+
+################ FINISH + RESET TO WAIT ################
+
+82.114354 - main.rs [INFO]  Finished the game. Going back into waiting mode.
+
+82.114377 - game.rs [DEBUG]  Current GameState=Finished, started=82114 ms from boot with current-duration=0 ms
+
+82.114428 - game.rs [INFO]  Current state duration before transition=Finished->Waiting: 0 ms
+
+82.114468 - game.rs [INFO]  Transition finished: Game { state: Waiting, state_start: Instant { ticks: 82114464 }, state_duration: Duration { ticks: 84 } }
+
+82.114522 - main.rs [INFO]  We are waiting! Resetting scores before next game
+
+88.240100 - main.rs [INFO]  Press any button within the next 2 seconds to start the game...
+
+90.240133 - main.rs [INFO]  Timeout! going through routine again.
+
+96.365704 - main.rs [INFO]  Press any button within the next 2 seconds to start the game...
+```
+
+### Reset avec les 2 boutons
+
+[Démo de reset avec les 2 boutons](https://youtube.com/shorts/U9RWrXn6WUA?feature=share)
+
+On perds le lien avec `probe-rs` car reset hardware:
+
+```text
+7.056322 - game.rs [INFO]  Transition finished: Game { state: Playing, state_start: Instant { ticks: 7056317 }, state_duration: Duration { ticks: 7055562 } }
+
+7.056392 - main.rs [INFO]  We are playing!
+
+7.056417 - main.rs [INFO]  Players get ready for round #0
+
+7.056457 - led.rs [INFO]  Players get ready for round 0
+
+10.256638 - led.rs [INFO]  Rng time for LED ON until shutoff for current game round: 3161 ms.
+
+13.417690 - led.rs [INFO]  GO!
+
+13.825521 - button.rs [INFO]  Player1 button pressed.
+
+13.925594 - button.rs [INFO]  Player1 button released.
+
+13.925621 - main.rs [INFO]  B1 was faster!
+
+15.325841 - led.rs [DEBUG]  Blinking winner Led { role: Player1, output_level=Low } for current_score: 1
+
+16.325924 - main.rs [INFO]  DINGINGINGING! Congratulations for Player1 with a response time of 457 ms
+
+16.325961 - main.rs [INFO]  Current scores:
+
+16.325985 - main.rs [INFO]  Player1: 1
+
+16.326019 - main.rs [INFO]  Player2: 0
+
+16.326050 - main.rs [INFO]  Target window for ressetting game with long button double press of 2s...
+
+17.550975 - button.rs [DEBUG]  Button 1 pressed
+
+17.600975 - button.rs [DEBUG]  Button 2 pressed
+
+18.326083 - main.rs [INFO]  Players get ready for round #1
+
+18.326112 - led.rs [INFO]  Players get ready for round 1
+
+18.620985 - button.rs [INFO]  Both buttons held for 1+ second. Continuing to monitor for reset threshold...
+
+20.620987 - button.rs [INFO]  Long press detected on both buttons (b1=3070 ms, b2=3020 ms). Resetting via watchdog...
+
+23.026244 - led.rs [INFO]  Rng time for LED ON until shutoff for current game round: 2476 ms.
+
+ WARN probe_rs::session: Could not clear all hardware breakpoints: An ARM specific error occurred.
+
+Caused by:
+    0: An error occurred in the communication with an access port or debug port.
+    1: Target device did not respond to request.
+ WARN probe_rs::session: Failed to deconfigure device during shutdown: Arm(Dap(NoAcknowledge))
+ WARN probe_rs::architecture::arm::communication_interface: Failed to stop DP Multidrop(11002927)
+Error: An ARM specific error occurred.
+
+Caused by:
+    0: Error using access port FullyQualifiedApAddress { dp: Multidrop(16787751), ap: V1(0) }.
+    1: Failed to read register DRW at address 0xd0c
+    2: An error occurred in the communication with an access port or debug port.
+    3: Target device did not respond to request.
+```
 
 ## Conclusion :checkered_flag:
 
