@@ -6,7 +6,6 @@ mod common;
 mod game;
 mod led;
 
-use button::{monitor_double_longpress, Button, ButtonMutex, ButtonRole};
 use defmt::*;
 use embassy_executor::Spawner;
 use embassy_futures::select::{select, select3, Either, Either3};
@@ -17,6 +16,7 @@ use heapless::{Entry, FnvIndexMap};
 
 use {defmt_rtt as _, panic_probe as _};
 
+use button::{monitor_double_longpress, Button, ButtonMutex, ButtonRole};
 use game::{
     get_current_game_state_or_reset, transition_game_state, update_current_game_state_duration,
     GameState,
@@ -279,16 +279,45 @@ async fn main(spawner: Spawner) {
 
 // TEST DEBOUNCE TIME. Uncomment to run as main
 // #[embassy_executor::main]
-async fn _test_debounce_time(_spawner: Spawner) {
+async fn _test_debounce_time(spawner: Spawner) {
     info!("Raspberry Pi Pico init in main executor...");
     let p = embassy_rp::init(Default::default());
 
+    // Watchdog for reset
+    {
+        let mut watchdog_unlocked = WATCHDOG.lock().await;
+        *watchdog_unlocked = Some(Watchdog::new(p.WATCHDOG));
+
+        // Making sure we panic if unproperly init
+        match *watchdog_unlocked {
+            None => crate::panic!("Could not initialize watchdog timer"),
+            Some(_) => info!("Initialized 'WATCHDOG'  as static shareable thread-safe ref",),
+        }
+
+        if let Some(wd) = watchdog_unlocked.as_mut() {
+            let wd_starve_time = Duration::from_secs(3);
+            wd.start(wd_starve_time);
+            info!(
+                "Started watchdog on feed scheduale of {} s",
+                wd_starve_time.as_secs()
+            );
+        }
+    }
+
+    // Start watchdog feeding task so we can reset the game with longpress
+    spawner
+        .spawn(feed_watchdog(&WATCHDOG, Duration::from_millis(500)))
+        .unwrap();
+
     // Initializing Buttons peripherals with Pull UP
     let mut button_p1 = Button::new(p.PIN_10, ButtonRole::Player1);
-    info!("Initializing {}...", &button_p1);
+    let mut button_p2 = Button::new(p.PIN_11, ButtonRole::Player2);
+    info!("Initialized {}...", &button_p1);
+    info!("Initialized {}...", &button_p2);
 
     // Initialize game state singleton in waiting mode
     game::initialize_game().await;
+    transition_game_state(GameState::Playing).await;
     loop {
         // Take the action based on game state
         let current_state = get_current_game_state_or_reset(&WATCHDOG).await;
@@ -296,17 +325,23 @@ async fn _test_debounce_time(_spawner: Spawner) {
         // NOTE: Main priority compared to button reset + display refresh
         match current_state {
             GameState::Playing => {
-                let minimal_debounce_b1 = button_p1.measure_minimal_debounce(100, 10).await;
+                let minimal_debounce_b1 = button_p1._measure_minimal_debounce(100, 10).await;
                 info!(
                     "min debounce ms: {} for {}",
                     minimal_debounce_b1, &button_p1
                 );
 
+                let minimal_debounce_b2 = button_p2._measure_minimal_debounce(100, 10).await;
+                info!(
+                    "min debounce ms: {} for {}",
+                    minimal_debounce_b2, &button_p2
+                );
+
                 game::transition_game_state(GameState::Finished).await;
             }
             GameState::Finished => {
-                info!("Done testing. Going into wait mode.");
-                game::transition_game_state(GameState::Waiting).await;
+                info!("Done testing. ");
+                break;
             }
 
             _ => error!("err"),

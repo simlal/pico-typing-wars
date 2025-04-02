@@ -75,8 +75,12 @@ impl Button<'_> {
     }
 
     // Figure out minimal debounce time for button press
-    pub async fn measure_minimal_debounce(&mut self, ms_test_range: u64, iterations: usize) -> u64 {
-        const MIN_DEBOUNCE_DEFAULT_IN_TEST: u64 = 150;
+    pub async fn _measure_minimal_debounce(
+        &mut self,
+        ms_test_range: u64,
+        iterations: usize,
+    ) -> u64 {
+        const MIN_DEBOUNCE_DEFAULT_IN_TEST: u64 = 50;
         info!(
             "Measuring debounce for {} Button with {} ms max and averaging over {}",
             self.role, ms_test_range, iterations
@@ -110,6 +114,7 @@ impl Button<'_> {
                         let bounce_duration = now - last_transition_time;
                         if bounce_duration > longest_debounce {
                             longest_debounce = bounce_duration;
+                            debug!("New longest debounce: {} ms", bounce_duration.as_millis());
                         }
                     }
 
