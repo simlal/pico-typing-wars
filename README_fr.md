@@ -1,120 +1,131 @@
-
 # Project: Pico Button Wars
 
-Course project for _IFT-769 - Real-Time Systems_.
+Projet de session pour le cours _IFT-769 - Systèmes Temps Réel_.
 
-Using the Raspberry Pi Pico platform, we'll implement a reaction time game (and possibly a typing game)
-with electronic components (buttons, LEDs, LCD screen, USB keyboard).
+Avec la plateforme Raspberry Pi Pico, nous allons implémenter un jeu de rapidité de réponse (et possiblement de frappe)
+avec des composants électroniques (bouton, LED, écran LCD, clavier USB).
 
-The project is divided into 2 parts:
+Le projet est divisé en 2 parties:
 
-1. **Part 1**: Primary implementation of a reaction time game with buttons and LEDs
-2. **Part 2 (optional)**: Implementation of a typing speed game with a USB keyboard and LCD display
+1. **Partie 1**: Implémentation primaire d'un jeu de rapidité de temps de réaction avec bouton et LED
+2. **Partie 2 (optionnel)**: Implémentation d'un jeu de rapidité de frappe sur un clavier USB avec affichage sur écran LCD
 
-**TLDR:** See the [demonstration for part 1 here](#demo-camera)
+**TLDR:** Voir la [démonstration pour la partie 1 ici](#démo-moviecamera)
 
-## Table of Contents
+## Table des matières
 
 <!--toc:start-->
 - [Project: Pico Button Wars](#project-pico-button-wars)
-  - [Table of Contents](#table-of-contents)
+  - [Table des matières](#table-des-matières)
   - [Introduction :book:](#introduction-book)
-    - [Overview](#overview)
-      - [Part 1](#part-1)
-      - [Part 2 (TODO)](#part-2-todo)
-    - [Why Rust](#why-rust)
-  - [Schedule and Deliverables :calendar:](#schedule-and-deliverables-calendar)
-    - [Personal Objectives](#personal-objectives)
-  - [Development Environment :hammer_and_wrench:](#development-environment-hammer-and-wrench)
-    - [Standard Rust Toolchain](#standard-rust-toolchain)
-    - [Resources, Libraries and Tools for Rust Development on Embedded Systems](#resources-libraries-and-tools-for-rust-development-on-embedded-systems)
-    - [Debugging with `probe-rs` and Build System with `cargo`](#debugging-with-probe-rs-and-build-system-with-cargo)
-      - [Debugging with a 2nd Raspberry Pi Pico](#debugging-with-a-2nd-raspberry-pi-pico)
-      - [Build System](#build-system)
-      - [Project `blinky`](#project-blinky)
-  - [Development Environment Instructions](#development-environment-instructions)
-    - [Rust Installation](#rust-installation)
-    - [Toolchain Selection](#toolchain-selection)
-    - [Building and/or Running the `blinky` Project](#building-andor-running-the-blinky-project)
-    - [Building and/or Running the `pico-button-wars` Project](#building-andor-running-the-pico-button-wars-project)
-  - [Hardware Setup :rocket:](#hardware-setup-rocket)
-    - [Required Materials](#required-materials)
-  - [Pico Button Wars :video_game:](#pico-button-wars-video-game)
-    - [Code Structure](#code-structure)
-      - [Overview](#overview-1)
+    - [Vue d'ensemble](#vue-densemble)
+      - [Partie 1](#partie-1)
+      - [Partie 2 (TODO)](#partie-2-todo)
+    - [Le choix de Rust](#le-choix-de-rust)
+  - [Écheancier et livraisons :calendar:](#écheancier-et-livraisons-calendar)
+    - [Objectifs personnels](#objectifs-personnels)
+  - [Environnement de développement :hammer_and_wrench:](#environnement-de-développement-hammerandwrench)
+    - [Chaîne d'outils Rust standards](#chaîne-doutils-rust-standards)
+    - [Ressources, librairies et outils pour le développement Rust sur systèmes embarqués](#ressources-librairies-et-outils-pour-le-développement-rust-sur-systèmes-embarqués)
+    - [Débuggage avec `probe-rs` et système de build avec `cargo`](#débuggage-avec-probe-rs-et-système-de-build-avec-cargo)
+      - [Debugging avec un 2e Raspberry Pi Pico](#debugging-avec-un-2e-raspberry-pi-pico)
+      - [Système de build](#système-de-build)
+      - [Projet `blinky`](#projet-blinky)
+  - [Instruction pour l'environnement de développement](#instruction-pour-lenvironnement-de-développement)
+    - [Installation de Rust](#installation-de-rust)
+    - [Choix de la chaine d'outils](#choix-de-la-chaine-doutils)
+    - [Compilation et/ou exécution du projet `blinky`](#compilation-etou-exécution-du-projet-blinky)
+    - [Compilation et/ou exécution du projet `pico-button-wars`](#compilation-etou-exécution-du-projet-pico-button-wars)
+  - [Mise en place du matériel :rocket:](#mise-en-place-du-matériel-rocket)
+    - [Matériel requis](#matériel-requis)
+  - [Pico Button Wars :video_game:](#pico-button-wars-videogame)
+    - [Structure du code](#structure-du-code)
+      - [Vue d'ensemble](#vue-densemble)
       - [`common.rs`](#commonrs)
       - [`game.rs`](#gamers)
       - [`led.rs`](#ledrs)
       - [`button.rs`](#buttonrs)
-        - [Debounce Test](#debounce-test)
-        - [Asynchronous Task for Button Monitoring (reset)](#asynchronous-task-for-button-monitoring-reset)
+        - [Debounce test](#debounce-test)
+        - [Tâche asynchrone pour monitorer les boutons (_reset_)](#tâche-asynchrone-pour-monitorer-les-boutons-reset)
       - [`main.rs`](#mainrs)
-        - [Initialization and Launching Asynchronous Tasks](#initialization-and-launching-asynchronous-tasks)
-        - [Main Game Loop](#main-game-loop)
-  - [Demo :camera:](#demo-camera)
-    - [Game Example](#game-example)
-    - [Reset with Both Buttons](#reset-with-both-buttons)
-  - [Conclusion :checkered_flag:](#conclusion-checkered-flag)
+        - [Initialisation et lancement de tâches asynchrones](#initialisation-et-lancement-de-tâches-asynchrones)
+        - [Boucle principale du jeu](#boucle-principale-du-jeu)
+  - [Démo :movie_camera:](#démo-moviecamera)
+    - [Exemple d'une partie](#exemple-dune-partie)
+    - [Reset avec les 2 boutons](#reset-avec-les-2-boutons)
+  - [Conclusion :checkered_flag:](#conclusion-checkeredflag)
   - [References :books:](#references-books)
 <!--toc:end-->
 
 ## Introduction :book:
 
-### Overview
+### Vue d'ensemble
 
-The project involves creating a reaction time and typing speed game using the Raspberry Pi Pico platform. The game is divided into two parts:
+Le projet consiste à créer un jeu de rapidité de réponse et de frappe en utilisant la plateforme Raspberry Pi Pico. Le jeu est divisé en deux parties:
 
-1. **Part 1**: Primary implementation of a reaction time game with buttons and LEDs
-2. **Part 2 (TODO)**: Implementation of a typing speed game with a USB keyboard and LCD display
+1. **Partie 1**: Implémentation primaire d'un jeu de rapidité de temps de réaction avec bouton et LED
+2. **Partie 2 (TODO)**: Implémentation d'un jeu de rapidité de frappe sur un clavier USB avec affichage sur écran LCD
 
-**TLDR:** See the [demonstration for part 1 here](#demo-camera)
+**TLDR:** Voir la [démonstration pour la partie 1 ici](#démo-moviecamera)
 
-#### Part 1
+#### Partie 1
 
-The game is designed to test players' reaction time and speed. Part 1 primarily consists of pressing a button as soon as the LED lights up after a random delay following game initiation. There will be 2 buttons and 2 LEDs to allow 2 players to play simultaneously. The game loop consists of:
+Le jeu est conçu pour tester la rapidité de réaction et de frappe des joueurs. La partie 1 consiste globalement
+à appuyer sur un bouton dès que la LED s'allume après un délai aléatoire suite au déclenchement du jeu. Il y aura
+2 boutons et 2 LEDs pour permettre à 2 joueurs de jouer simultanément. Ainsi, la boucle de jeu consiste à:
 
-1. Waiting for a random delay
-2. Turning on both LEDs
-3. Waiting for players to press their respective buttons
-4. Measuring reaction time and declaring the winner
-5. Flashing the winner's LED
-6. Repeating the game.
+1. Attendre un délai aléatoire
+2. Allumer les 2 LEDs
+3. Attendre que les joueurs appuient sur leur bouton respectif
+4. Mesurer le temps de réaction et déclarer le gagnant
+5. Faire clignoter la LED du gagnant
+6. Répéter le jeu.
 
-#### Part 2 (TODO)
+#### Partie 2 (TODO)
 
-Part 2 is an extension of Part 1, where the game tests players' typing speed. The game takes the winner from Part 1 and has them play a typing speed game. The player must repeat a sequence of characters displayed on an LCD screen. These sequences will be random lines of code (possibly from the source code?). The player must type the sequence as quickly as possible within a time limit (based on the number of characters).
+La partie 2 est une extension de la partie 1, où le jeu teste la rapidité de frappe des joueurs. Le jeu consiste à prendre
+le gagnant de la partie 1 et le faire jouer à un jeu de rapidité de frappe. Le joueur doit répéter une séquence de caractères
+affichée sur un écran LCD. Ces séquences seront des lignes de code aléatoires (Possiblement le code source ?).
+Le joueur doit taper la séquence le plus rapidement possible dans un temps limité (en fonction du nombre de caractères).
 
-### Why Rust
+### Le choix de Rust
 
-Rust is a modern programming language that emphasizes memory safety, speed, and concurrency. It supports multiple programming paradigms and can be used for various purposes (e.g., system programming, backend/server development, CLI tools, etc.).
+<span style="color:orange">Rust</span> [0] est un langage de programmation moderne qui met l'accent sur la <span style="color:orange">sécurité mémoire, la rapidité et la concurrence</span>. Il prend en charge plusieurs paradigmes de programmation et peut être utilisé à diverses fins (par exemple, programmation système, développement backend/serveur, outils CLI, etc.).
 
-Rust is also known for its ownership and lifetime systems, as well as its strict type checker, which ensures memory safety without requiring garbage collection, thanks to the compiler's borrowing verification mechanism. Additionally, it's an increasingly popular language in both industry and academia.
+Rust est également connu pour ses systèmes de propriété et de durées de vie, ainsi que son vérificateur de types strict, qui garantit la sécurité mémoire sans nécessiter de ramasse-miettes, grâce au mécanisme de vérification des emprunts du compilateur.
+De plus, c'est un langage de plus en plus populaire autant en industrie qu'en académie [2].
 
-Since this course focuses on real-time systems, Rust is a wise choice for this project due to its performance, memory safety, and suitability for real-time constraints and the limited resources of the Raspberry Pi Pico platform.
+Puisque le cours est axé sur les systèmes temps réel, Rust est un choix judicieux pour ce projet en raison de sa performance, de sa sécurité mémoire
+et des contraintres de temps reél et des ressources limitées de la plateforme Raspberry Pi Pico.
 
-## Schedule and Deliverables :calendar:
+## Écheancier et livraisons :calendar:
 
-- [x] _L00_: Introduction and planning :calendar:
-- [ ] _L01_: Progress with demonstration of part of the project (part 1 desired!) :video_game:
-- [ ] _L02_: Presentation with demonstration :rocket: of the final project and report
+- [x] _L00_: Introduction et planification :calendar:
+- [ ] _L01_: Progrès avec démonstration d'une partie du projet (partie 1 souhaitée!) :video_game:
+- [ ] _L02_: Présentation avec démonstration :rocket: du projet final et rapport
 
-| Deliverable | Deadline | Description |
+| Livrable | Date limite | Description                                                                                                                                                                   |
 | -------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| L00      | 2025-01-27  | Introduction and planning. GitHub repo, documentation, required materials, etc. |
-| L01      | 2025-03-10  | Progress with demonstration of part of the project. Execution of part 1 desired, otherwise in finalization. Source code, documentation, demonstration video, etc. |
-| L02      | 2025-04-07  | Final project presentation with demonstration. Source code, documentation, completed demonstration video with final report. |
+| L00      | 2025-01-27  | Introduction et planification. GitHub repo, documentation, matériels requis etc.                                                                                              |
+| L01      | 2025-03-10  | Progrès avec démonstration d'une partie du projet. Exécution de la partie 1 souhaitée, sinon en voie de finalisation. Code source, documentation, vidéo de démonstration etc. |
+| L02      | 2025-04-07  | Présentation finale du projet avec démonstration. Code source, documentation, vidéo de démonstration terminée avec Rapport final.                                             |
 
-### Personal Objectives
+### Objectifs personnels
 
-- Introduction to embedded systems programming, the Raspberry Pi Pico platform, and Rust programming.
-- Introduction to using electronic peripherals, communication protocols (I2C, SPI, USB).
-- Development of real-time programming skills, resource management, and time constraints.
+- Initiations à la programmation de systèmes embarqués, à la plateforme Raspberry Pi Pico et à la programmation en Rust.
+- Initiations à l'utilisation de périphériques électroniques, protocoles de communications (I2C, SPI, USB).
+- Développement de compétences en programmation temps réel, gestion de ressources et contraintes de temps.
 
-## Development Environment :hammer_and_wrench:
+## Environnement de développement :hammer_and_wrench:
 
-After initially trying to use the Raspberry Pi Pico C/C++ SDK, I decided to switch to Rust for this project. Although C is the preferred language for embedded systems, my initial impression of the toolchain with _CMake_ via the Pico SDK, the semi-functional debugging via a 2nd Pico with _OpenOCD_ and _GDB_, and the lack of native SDK support for _multi-threading_ pushed me to explore an alternative.
+Après avoir essayé d'utiliser à-priori le SDK C/C++ du Raspberry Pi Pico, j'ai décidé de me tourner vers Rust pour ce projet.
+Quoique C soit le langage de prédilection pour les systèmes embarqués, mon impression initiale de la chaine d'outils
+avec _CMake_ via le SDK Pico, le débuggage semi-fonctionnelle via un 2e pico avec _OpenOCD_ et _GDB_ ainsi qu'aucune gestion
+native par le SDK pour le _multi-threading_ m'ont poussé à explorer une alternative.
 
-I also encountered an issue with peripheral initialization via the Pico SDK, where the `blinky` example didn't work. Using the 2nd Pico debugger, I could see that the code was executing but was blocking in the initialization code in the following loop:
+J'ai également eu un problème avec l'initialisation des périphériques via le
+SDK Pico, où l'exemple `blinky` ne fonctionnait pas. En utilisant le 2e pico débuggeur,
+j'ai pu voir que le code s'exécutait, mais blockait dans le code d'initialisation dans la boucle suivante:
 
 ```c
 while (!time_reached(t_before)) {
@@ -123,119 +134,139 @@ while (!time_reached(t_before)) {
 }
 ```
 
-A trace of this approach remains on the `c-version-sdk` branch. I therefore decided to switch to Rust for this project.
+Une trace de cette démarche reste sur la branche `c-version-sdk`.
+J'ai donc décidé de me tourner vers Rust pour ce projet.
 
-After briefly exploring the introduction to Rust via **The Rust Programming Language**, I decided that it seemed to be a judicious choice for this project (as well as for personal learning). The Rust toolchain is well integrated with embedded systems development.
+Après avoir brièvement exploré l'introduction à Rust via **The Rust Programming Language** [1], j'ai décidé d'opter qui semblait
+être un choix judicieux pour ce projet (ainsi que pour l'apprentissage personnel). La chaîne d'outils de Rust est bien intégrée
+avec le développement de systèmes embarqués.
 
-### Standard Rust Toolchain
+### Chaîne d'outils Rust standards
 
-The Rust toolchain managed via `rustup` contains:
+La chaine d'outils de Rust contient qui est géré via `rustup` contient:
 
-- `rustc`: Rust compiler
-- `cargo`: Package manager and build system
-- `rustup`: Version and toolchain manager
-- `rls`: Rust Language Server for integration with text editors
-- `rustfmt`: Formatter for Rust
-- `clippy`: Linter for Rust
-- `rust-analyzer`: Code analyzer for Rust (Interface with editors)
+- `rustc`: Compilateur Rust
+- `cargo`: Gestion de package et build system
+- `rustup`: Gestionnaire de version et chaines d'outils
+- `rls`: Rust Language Server pour l'intégration avec les éditeurs de texte
+- `rustfmt`: Formatter pour Rust
+- `clippy`: Linter pour Rust
+- `rust-analyzer`: Analyseur de code pour Rust (Interface avec les éditeurs)
 
-### Resources, Libraries and Tools for Rust Development on Embedded Systems
+### Ressources, librairies et outils pour le développement Rust sur systèmes embarqués
 
-First, a key resource is **The Embedded Rust Book** which is a comprehensive resource for Rust development on embedded systems. Additionally, there is a [Rust Embedded Working Group](https://github.com/rust-embedded) that provides tools, libraries, and resources for Rust development on embedded systems.
+Premièrement, une première ressource clée est le livre **The Embedded Rust Book** [2] qui est une ressource complète pour le développement Rust sur systèmes embarqués.
+De plus, il existe un [Rust Embedded Working Group](https://github.com/rust-embedded) qui fournit des outils, des
+librairies et des ressources pour le développement Rust sur systèmes embarqués.
 
-Next, there are several libraries and tools for Rust development on embedded systems:
+Ensuite, il existe plusieurs librairies et outils pour le développement Rust sur systèmes embarqués:
 
-- `svd2rust`: Rust code generator from SVD (System View Description) files for ARM peripherals. [svd2rust executable](https://docs.rs/svd2rust/latest/svd2rust/)
-- `probe-rs`: Programming and debugging tool for ARM Cortex-M microcontrollers. [Official Website](https://probe.rs/)
-- `cortex-m`: Library for ARM Cortex-M development in Rust. Includes interrupt routines, error handling, etc. [GitHub](https://github.com/rust-embedded/cortex-m)
-- `embedded-hal`: Peripheral abstraction for embedded systems. [GitHub](https://github.com/rust-embedded/embedded-hal)
-- `rp2040-pac`: ARM Cortex-M0+ peripherals for the Raspberry Pi Pico. [GitHub](https://github.com/rp-rs/rp2040-pac)
-- `rp-rs/rp-hal`: HAL for the Raspberry Pi Pico. [GitHub](https://github.com/rp-rs/rp-hal)
-- `embassy-rs`: Asynchronous framework for embedded systems. [Official Website](https://embassy.dev/) [5]
+- `svd2rust`: Générateur de code Rust à partir de fichiers SVD (System View Description) pour les périphériques ARM. [Exécutable svd2rust](https://docs.rs/svd2rust/latest/svd2rust/)
+- `probe-rs`: Outil de programmation et de débuggage pour les microcontrôleurs ARM Cortex-M. [Site Web Officiel](https://probe.rs/)
+- `cortex-m`: Librairie pour le développement ARM Cortex-M en Rust. Inclus routines d'interruptions, gestion erreurs etc. [GitHub](https://github.com/rust-embedded/cortex-m)
+- `embedded-hal`: Abstraction des périphériques pour les systèmes embarqués. [GitHub](https://github.com/rust-embedded/embedded-hal)
+- `rp2040-pac`: Périphériques ARM Cortex-M0+ pour le Raspberry Pi Pico. [GitHub](https://github.com/rp-rs/rp2040-pac)
+- `rp-rs/rp-hal`: HAL pour le Raspberry Pi Pico. [GitHub](https://github.com/rp-rs/rp-hal)
+- `embassy-rs`: Framework asynchrone pour les systèmes embarqués. [Site Web Officiel](https://embassy.dev/) [5]
 
-### Debugging with `probe-rs` and Build System with `cargo`
+### Débuggage avec `probe-rs` et système de build avec `cargo`
 
-#### Debugging with a 2nd Raspberry Pi Pico
+#### Debugging avec un 2e Raspberry Pi Pico
 
-As found in the [Raspberry Pi Pico documentation](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf), it's possible to use a 2nd Pico as a debugger for the main Pico. The connection diagram can be seen here where the debugger Pico is connected to the computer and the main Pico is connected to the debugger Pico via the `SWD` pins:
+Tel que retrouvé dans la documentation du [Raspberry Pi Pico](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf),
+il est possible d'utiliser un 2e pico comme débuggeur pour le pico principale.
+On peut voir le schéma de connexion ici où le pico débuggeur est connecté à l'ordinateur
+et le pico principale est connecté au pico débuggeur via les pins `SWD` ici:
 
 <img src="./media/pico-debug.png" alt="pico-debugging" width="400">
 
-This allows us to both simplify loading executables onto the main Pico and also debug the code using `probe-rs` and `gdb`.
+Ainsi, ça nous permet à la fois de simplifier le chargement des exécutables sur le pico principale et également de
+débugger le code en utilisant `probe-rs` et `gdb`.
 
-#### Build System
+#### Système de build
 
-In the context of embedded systems, the `blinky` project is a demonstration project that consists of making an LED blink. It's the equivalent of `hello world!` for embedded systems. I was inspired by the example of the `blinky` project with `embassy-rs` to set up the development environment.
+Dans le contexte des systèmes embarqués, le projet `blinky` est un projet de démonstration qui consiste à faire clignoter une LED.
+C'est l'équivalent du `hello world!` pour les systèmes embarqués.
+Ainsi, je me suis inspiré de l'exemple du projet `blinky` avec `embassy-rs` pour mettre en place l'environnement de développement.
 
-This framework will allow us to manage peripherals and interrupts asynchronously without resorting to an RTOS (Real-Time Operating System). By minimizing dependencies, a build system with `cargo` and `probe-rs`, we have a good starting point with [blinky found in this repository](./blinky/).
+Ce framework nous permettra de gérer les périphériques et les interruptions de manière asynchrone sans avoir recours
+à un RTOS (Real-Time Operating System). En minimisant les dépendances, un système de build avec `cargo` et `probe-rs`, nous avons un bon point de départ avec [blinky qui se trouve dans se répertoire](./blinky/).
 
-Here are the necessary elements to establish a build system with `cargo` and a Pi Pico:
+Voici les éléments nécessaires pour établir un système de build avec `cargo` et un Pi Pico:
 
 **`build.rs`**:
 
-- Facilitates integration of the memory address map for the Pico with the `memory.x` file. Used by crates related to peripheral access (_PAC_) and hardware abstractions (_HAL_).
-- Passes compilation flags to the linker and compiler. i.e., `--nmagic` allows disabling page alignment since we don't use such a memory pagination system in an embedded system like the Pico.
+- Facilite l'intégration de la carte des addresses mémoires pour le pico
+  avec le fichier `memory.x`. Est utilisé par les crates en lien avec les accès aux périphériques (_PAC_) et
+  les abstraction du matériels (_HAL_).
+- Passer des flags de compilation pour le linker et le compilateur. i.e. `--nmagic` permet de désactiver l'alignement des pages car nous n'utilisons pas un tel système de pagination de la mémoire dans un système embarqué comme le Pico.
 
 **`memory.x`**:
 
-- Memory configuration file for the linker. Defines the memory sections for the bootloader, flash memory, and RAM of the Pico.
+- Fichier de configuration de la mémoire pour le linker. Définit les sections de mémoire pour le bootloader,
+  la mémoire flash et la RAM du pico.
 
 **`Cargo.toml`**:
 
-- Configuration file for `cargo` for the project. Contains dependencies, build configurations for compilation.
-- Also contains information about our project (name, version, author, etc.)
+- Fichier de configuration de `cargo` pour le projet. Contient les dépendances, les configurations de build pour la compilation.
+- Contient également les informations de notre projet (nom, version, auteur etc.)
 
-The `release` and `dev` profiles are configured here, meaning that when we compile our project with `cargo build --release`, the production version compilation options are used. In our case, we have the following options:
+Les profiles `release` et `dev` sont configurés ici, c'est à dire que lorsque nous compilons notre projet avec
+`cargo build --release`, les options de compilation pour la version de production sont utilisées. Dans notre cas,
+nous avons les options suivantes:
 
 ```toml
-# Build configuration for the production version
+# Configuration de build pour la version de production
 [profile.release]
-debug = 2  # Full debug level
-lto = true  # Link Time Optimization active, so code optimization at compilation
-opt-level = 'z'  # Optimization level for minimizing binary size
+debug = 2  # Niveau de debuggage complet
+lto = true  # Link Time Optimization actif, donc optimisation du code à la compilation
+opt-level = 'z'  # Niveau d'optimisation pour la taille du binaire à minimiser
 ```
 
 **`rust-toolchain.toml`**:
 
-- Configuration file for `rustup` that allows specifying the Rust toolchain (version and components).
+- Fichier de configuration pour `rustup` qui permet de spécifier la chaine d'outils (version et composantes) de Rust.
 
 **`.cargo/config.toml`**:
 
-- Configuration file for `cargo` that allows specifying build options for the project.
-- In our case, we specify `probe-rs` as the `runner` for debugging and the `thumbv6m-none-eabi` target for compilation.
+- Fichier de configuration pour `cargo` qui permet de spécifier les options de build pour le projet.
+- Dans notre cas, on spécifie `probe-rs` comme le `runner` pour le débuggage et la cible `thumbv6m-none-eabi` pour la compilation.
 
-`thumbv6m-none-eabi` is the target for ARM Cortex-M0 and M0+ microcontrollers (the Pico's processor).
+`thumbv6m-none-eabi` est la cible pour les microcontrôleurs ARM Cortex-M0 et M0+ (le processeur du Pico).
 
 **`main.rs`**:
 
-- Main source file of the project.
-- The `#![no_std]` attribute indicates that we're not using the Rust standard library.
-- The `#![no_main]` attribute indicates that we're not using the Rust `main` function, but rather the `embassy_executor::main` function provided by the `embassy-rs` framework.
+- Fichier source principal du projet.
+- L'attribut `#![no_std]` indique que nous n'utilisons pas la librairie standard de Rust.
+- L'attribut `#![no_main]` indique que nous n'utilisons pas la fonction `main` de Rust,
+  mais plutot la fonction `embassy_executor::main` qui est fournie par le framework `embassy-rs`.
 
-There will be more details on how `embassy-rs` works with `async/await` later.
+Il y aura plus de détails sur le fonctionnement de `embassy-rs` avec `async/await` plus loin.
 
-#### Project `blinky`
+#### Projet `blinky`
 
-The `blinky` project is a demonstration project that consists of making an LED blink on the Raspberry Pi Pico. Using the `embassy-rs` framework, this allows us to easily make an LED blink by taking advantage of asynchronous features (especially for the timer).
+Le projet `blinky` est un projet de démonstration qui consiste à faire clignoter une LED sur le Raspberry Pi Pico.
+En utilisant le framework `embassy-rs`, ceci nous permet de facilement faire clignoter une LED en prenant avantager
+des fonctionnalités asynchrones (surtout pour le timer).
 
-We see the LED on the Pico (corresponding to pin 25) blinking at a frequency of 1Hz:
+On voit la LED sur le pico (correspondant à la pin 25) clignoter à une fréquence de 1Hz:
 <img src="./media/pico-blinky-live.gif" alt="blinky-live" width="300">
 
-On the console:
+Sur la console:
 
 <img src="./media/pico-blinky-console.gif" alt="blinky-console" width="800">
 
-## Development Environment Instructions
+## Instruction pour l'environnement de développement
 
-### Rust Installation
+### Installation de Rust
 
-Using rustup.sh, we install the Rust version manager `rustup` which allows managing Rust versions and toolchains.
+  Avec rustup.sh, on installe le gestionnaire de version de Rust `rustup` qui permet de gérer les versions de Rust et les chaines d'outils.
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-Or also with your distribution's package manager:
+Ou également avec le package manager de ta distribution:
 
 ```bash
 # Ubuntu/debian
@@ -246,39 +277,39 @@ sudo dnf install rustup
 rustup-init
 ```
 
-We can verify the installation with:
+On peux verifier l'installation avec:
 
 ```bash
 rustup --version
 rustc --version
 ```
 
-We need `probe-rs` for debugging and programming the Pico. We install it with `cargo` or with a package manager:
+On a besoin de `probe-rs` pour le débuggage et la programmation du pico. On l'installe avec `cargo` ou avec un package manager:
 
 ```bash
-# with cargo (from source)
+# avec cargo (de la source)
 cargo install probe-rs
 
-# Installation script for Linux
+# Script d'installation pour Linux
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/probe-rs/probe-rs/releases/latest/download/probe-rs-tools-installer.sh | sh
 
 probe-rs --version
 ```
 
-### Toolchain Selection
+### Choix de la chaine d'outils
 
-To facilitate the installation of the toolchain for development on the Pi Pico, we can first clone the repository:
+Pour faciliter l'installation de la chaine d'outils pour le développement sur le Pi Pico, on peut d'abord cloner le dépôt:
 
 ```bash
 git clone git@github.com:simlal/pico-button-wars.git
 cd pico-button-wars
 ```
 
-For developing with Rust on the Raspberry Pi Pico, we need the `nightly-2024-12-10` Rust toolchain to compile for the `thumbv6m-none-eabi` target.
+Pour développer avec Rust sur le Raspberry Pi Pico, on a besoin de la chaine d'outils rust `nightly-2024-12-10` pour compiler pour la cible `thumbv6m-none-eabi`.
 
-Being in the project directory, the toolchain should be automatically detected by `rustup`.
+En étant dans le répertoire du projet, la chaine d'outils devrait être détectée automatiquement par `rustup`.
 
-This is specified in the `rust-toolchain.toml` file:
+Ceci est spécifié dans le fichier `rust-toolchain.toml`:
 
 ```toml
 [toolchain]
@@ -288,24 +319,24 @@ targets = [
 ]
 ```
 
-We can also add components like `rust-analyzer` and `rustfmt` for our IDE:
+On peut ajouter ainsi les composantes comme le `rust-analyzer` et `rustfmt` pour notre IDE:
 
 ```bash
 rustup component add rust-analyzer
 rustup component add rustfmt
 ```
 
-### Building and/or Running the `blinky` Project
+### Compilation et/ou exécution du projet `blinky`
 
-To run the `blinky` project, we can use `cargo` to compile and run the project:
+Pour rouler le projet `blinky`, on peut utiliser `cargo` pour compiler et exécuter le projet:
 
 ```bash
 cd blinky
-# To build only 
+# Pour build seulement 
 cargo build --release
 ```
 
-The _release_ mode is used here out of habit because we use the 'z' optimization _flag_ to minimize the binary size. Here's the compilation profile in the `Cargo.toml` file:
+Le mode _release_ est utiliser ici par habitude car on utilise le _flag_ d'optimisation 'z' pour minimiser la taille du binaire. Voici le profil de compilation dans le fichier `Cargo.toml`:
 
 ```toml
 [profile.release]
@@ -314,19 +345,19 @@ lto = true
 opt-level = 'z'
 ```
 
-We're still in debug mode with `debug = 2` to have debugging information and the environment variable for our log mode:
+On a est en mode debug quand même avec `debug = 2` pour avoir des informations de debuggage et la variable d'environnement pour notre mode de log:
 
 ```toml
 [env]
 DEFMT_LOG = "debug"
 ```
 
-With the debugger Pico connected, we can directly compile and run `blinky`:
+En ayant le pico débuggeur connecté, on peut directement compiler et exécuter `blinky`:
 
 ```bash
 cargo run --release
 
-# We should see the flash and the INFO log messages 
+# On devrait voir le flash et les message de log INFO 
 Finished `release` profile [optimized + debuginfo] target(s) in 0.16s
      Running `probe-rs run --chip RP2040 target/thumbv6m-none-eabi/release/blinky`
       Erasing ✔ 100% [####################]  12.00 KiB @  52.45 KiB/s (took 0s)
@@ -341,71 +372,73 @@ Finished `release` profile [optimized + debuginfo] target(s) in 0.16s
 ...
 ```
 
-### Building and/or Running the `pico-button-wars` Project
+### Compilation et/ou exécution du projet `pico-button-wars`
 
-Same principle for the `pico-button-wars` project:
+Même principe pour le projet `pico-button-wars`:
 
 ```bash
 cd pico-button-wars
 cargo build --release
 ```
 
-## Hardware Setup :rocket:
+## Mise en place du matériel :rocket:
 
-As seen in the connection diagram for debugging, we need to connect the debugger Pico to the computer. Thus, the main Pico is easily connected to the debugger Pico via the `SWD` pins to flash the code and debug.
+Tel que vu dans le schéma de connexion pour le débuggage, nous avons besoin de connecter le pico débuggeur à l'ordinateur.
+Ainsi, le pico principal est facilement connecté au pico débuggeur via les pins `SWD` pour flasher le code et débugger le code.
 
-In addition to the basic setup, for our project, we'll need to connect the following components:
+En plus de la mise en place de base, pour notre projet, nous aurons besoin de connecter les composants suivants:
 
-- 2 LEDs (red and green)
-- 2 differently colored buttons
-- LCD screen
-- USB keyboard (Optional)
-- USB adapters, _breadboard_, connection wires, etc.
+- 2 LEDs (rouge et verte)
+- 2 boutons de couleurs différentes
+- Écran LCD (Optionnel)
+- Clavier USB (Optionnel)
+- Adapteurs USB, _breadboard_, fils de connexion etc.
 
-We use different colors for the LEDs and buttons to distinguish the players.
+Nous utilisons des couleurs différentes pour les LEDs et les boutons pour distinguer les joueurs.
 
-### Required Materials
+### Matériel requis
 
-For part 1, we need the following components:
+Pour la partie 1, nous avons besoin des composants suivants:
 
-| Component(s) | Quantity | Description | Price |
+| Composante(s) | Quantité | Description | Prix |
 | ------------- | -------- | ---------- | ---- |
-| Raspberry Pi Pico-H | 2 | ARM Cortex-M0+ microcontroller with pre-installed headers | $7 each |
-| Breadboards | 2 | 400-point breadboards | $5 each |
-| Jumper wires | TODO | For connecting components | < $3 |
-| LEDs | 2 | Red and green | < $3 |
-| Resistors | ??? | LEDs=1kOhm, Buttons=10kOhm, ??? | < $3 |
+| Raspberry Pi Pico-H | 2 | Microcontrôleur ARM Cortex-M0+ avec headers pré-installés | 7$ chacun |
+| Breadboards | 2 | Breadboards de 400 points | 5$ chacun |
+| Fils de connection Jumper | TODO | Pour connecter les composants | < 3$ |
+| LEDs | 2 | Rouge et verte | < 3$ |
+| Resistances | ??? | LEDs=1kOhm, Boutons=10kOhm, ??? | < 3$ |
 
-For part 2, we add a USB keyboard to test players' typing speed and an adapter.
+Pour la partie 2, nous ajoutons un clavier USB pour tester la rapidité de frappe des joueurs et un adapteur.
 
-| Component(s) | Quantity | Description | Price |
+| Composante(s) | Quantité | Description | Prix |
 | ------------- | -------- | ---------- | ---- |
-| LCD Screen | 1 | 3.2 Inch 320x240 Touch LCD | $20 |
-| USB Keyboard | 1 | USB Keyboard | ~$10 |
-| OTG Adapter | 1 | USB-A to micro USB conversion | ~$10 |
+| Écran LCD | 1 | 3.2 Inch 320x240 Touch LCD | 20$ |
+| Clavier USB | 1 | Clavier USB | ~10$ |
+| Adapteur OTG | 1 | Conversion USB-A vers micro USB | ~10$ |
 
 ## Pico Button Wars :video_game:
 
-The project involves creating a reaction time and button game on a Raspberry Pi Pico.
-(I didn't have time to do part 2 so here's part 1 only.)
+Le projet consiste à créer un jeu de rapidité de réponse et de bouton sur un Raspberry Pi Pico.
+(Je n'ai pas eu le temps de faire la partie 2 donc voici la partie 1 seulement.)
 
-### Code Structure
+### Structure du code
 
-#### Overview
+#### Vue d'ensemble
 
-The code is divided into several modules to facilitate reading and understanding. The different modules are:
+Le code est divisé en plusieurs modules pour faciliter la lecture et la compréhension du code. Les différents modules sont:
 
-- `common.rs`: Module containing project utility functions (i.e., Rng, console formatting trait, etc.)
-- `game.rs`: Module containing the game logic. Contains the main game object to handle transitions between game states.
-- `led.rs`: Module containing the logic to control LEDs. Contains functions to turn LEDs on and off.
-- `button.rs`: Module containing the logic to control buttons. Contains functions to read the button state, handle debounce, etc.
-- `main.rs`: Main source file of the project. Contains peripheral initialization and the main game loop.
+- `common.rs`: Module contenant des fonctions utilitaires du projet (i.e. Rng, trait formattage console etc.)
+- `game.rs`: Module contenant la logique du jeu. Contient l'objet principal de jeu pour faire les transitions
+  entre les états du jeu.
+- `led.rs`: Module contenant la logique pour contrôler les LEDs. Contient les fonctions pour allumer et éteindre les LEDs.
+- `button.rs`: Module contenant la logique pour contrôler les boutons. Contient les fonctions pour lire l'état des boutons, gérer le débounce etc.
+- `main.rs`: Fichier source principal du projet. Contient l'initialisation des périphériques et la boucle principale du jeu.
 
-**NOTE**:
+**A NOTER**:
 
 #### `common.rs`
 
-Possibly a poor choice of module name (could have contained generic types, common traits, etc.), but mainly contains the simplistic Rng:
+Possiblement un mauvaix choix de nom de module (aurait pu contenir les types génériques, traits communs etc.), mais contient principalement le Rng simpliste:
 
 ```rust
 pub struct SimpleRngU64 {
@@ -437,11 +470,12 @@ impl SimpleRngU64 {
 }
 ```
 
-Useful for having a random light time for the LED before turning it off and thus making the game less predictable.
+Utile pour avoir un temps de lumière aléatoire pour la LED avant l'éteindre et donc rendre le jeu moins prévisible.
 
 #### `game.rs`
 
-The `game.rs` module contains the game logic. It contains the different game stages and transitions between game states. It's used as a static singleton to manage the game state. It also contains functions to manage transitions between game states.
+Le module `game.rs` contient la logique du jeu. Il contient les différentes étapes du jeu et les transitions entre les états du jeu.
+On l'utilise comme un singleton statique pour gérer l'état du jeu. Il contient également les fonctions pour gérer les transitions entre les états du jeu.
 
 ```rust
 
@@ -464,12 +498,12 @@ struct Game {
     state_duration: Duration,
 }
 
-// With state transition management methods
+// Avec les méthodes de gestion de transitions
 fn update_state_duration(&mut self) {...} 
 fn transition(&mut self, next_state: GameState) {...}
 ...
-// We access the singleton with GAME.lock()
-// Example access to gamestate and reset with watchdog
+// On accede le singleton avec GAME.lock()
+// Exemple acces au gamestate et reset avec le watchdog
 pub async fn get_current_game_state_or_reset(
     wd: &'static Mutex<ThreadModeRawMutex, Option<Watchdog>>,
 ) -> GameState {
@@ -497,7 +531,8 @@ pub async fn get_current_game_state_or_reset(
 
 #### `led.rs`
 
-The `led.rs` module contains the logic to control the LEDs. It contains functions to turn LEDs on and off, both for basic routines and abstractions to reflect the game state.
+Le module `led.rs` contient la logique pour contrôler les LEDs. Il contient les fonctions pour allumer et éteindre les LEDs,
+autant pour les routines de bases que des abstractions pour réfléter l'état du jeu
 
 ```rust
  
@@ -529,11 +564,11 @@ impl Led<'_> {
         self.output.set_low();
     }
 
-  // others ...
+  // autres ...
 
 }
 
-// Example used for the game's on/off lighting routine:
+// Exemple utilise pour la routine publique allumage + eteignage du jeu:
 
 pub async fn round_playing_leds_routine_on_off(
     leds: &'_ mut [Led<'_>; 3],
@@ -585,11 +620,12 @@ pub async fn round_playing_leds_routine_on_off(
 
 #### `button.rs`
 
-The `button.rs` module contains the logic to control the buttons. It contains functions to read the button state, have a task for game 'reset' (via watchdog starvation), evaluate debounce value, wait for and measure button press actions.
+Le module `button.rs` contient la logique pour contrôler les boutons. Il contient les fonctions pour lire l'état des boutons,
+avoir une tache pour le 'reset' du jeu (via le jeune du watchdog), evaluer la valeur de 'debounce', attendre et mesure des actions de pressage des boutons.
 
-This is therefore an important module that needs to be well tested to avoid false positives and false negatives, ensure nothing is blocked during execution for proper game execution.
+C'est donc un module qui est important et doit être bien testé pour éviter les faux positifs et les faux négatifs, s'assurer que rien n'est bloqué lors de l'exécution pour l'exécution propre du jeu.
 
-The general structure of the module is as follows:
+La structure générale du module est la suivante:
 
 ```rust
 // Debounce time with prior tests from measure_minimal_debounce()
@@ -608,7 +644,7 @@ pub struct Button<'a> {
 }
 ```
 
-And methods for both waiting for a button press, debounce, or simply monitoring its state:
+Et les methodes pour autant attendre un appui sur le bouton, que le debounce ou simplement monitorer son état:
 
 ```rust
 
@@ -656,15 +692,15 @@ impl Button<'_> {
         return self.wait_for_release().await;
     }
 
-  // Other methods...
+  // Autres methodes...
 }
 ```
 
-##### Debounce Test
+##### Debounce test
 
-I first performed tests to measure our _worst case debounce time_ for the button, while also evaluating if the button behavior was acceptable.
+J'ai tout d'abord effectuer des tests pour mesurer notre _worst case debounce time_ pour le bouton, mais tout en évaluant si le comportent du bouton était acceptable.
 
-Using this test routine, we evaluate the minimal debounce time for the button. We can use it to adjust the debounce value in the game code afterward as a `const` variable when constructing a `Button` instance:
+En utilisant cette routine de test, on evalue le temps de debounce minimal pour le bouton. On peut l'utiliser pour ajuster la valeur de debounce dans le code du jeu apres comme variable `const` lors de la construction d'une instance de `Button`:
 
 ```rust
 
@@ -770,20 +806,20 @@ pub async fn measure_minimal_debounce(&mut self, ms_test_range: u64, iterations:
 
 ```
 
-Thus, by calling the function on each of the buttons, multiple times with at least 10 iterations, we can evaluate the minimal debounce time for the button. We can then use it to adjust the debounce value in the game code afterward as a `const` variable when constructing a `Button` instance.
+Ainsi, en appelant la fonction sur chacun des boutons, plusieurs fois avec au moins 10 itérations, on peut évaluer le temps de debounce minimal pour le bouton. On peut ensuite l'utiliser pour ajuster la valeur de debounce dans le code du jeu apres comme variable `const` lors de la construction d'une instance de `Button`.
 
-I therefore evaluated that in the worst case generally, a value of 50 ms would be adequate (the majority of tests were below 50ms, but there were a few cases of ~100ms, so I decided to take the value of 50ms for the debounce.
+J'ai donc évaluer que dans le pire cas en général, une valeur de 50 ms serait adéquate (la majorité des tests étaient bas de )s 50ms, mais il y avait quelques cas de ~100ms, donc j'ai décidé de prendre la valeur de 50ms pour le debounce.
 
-##### Asynchronous Task for Button Monitoring (reset)
+##### Tâche asynchrone pour monitorer les boutons (_reset_)
 
-Since we want to _spawn_ an asynchronous task for the buttons with _Embassy_, we need to have a static reference for each of the buttons (so _lifetime_ of the entire program). Thus, when any resource wants to access a button, it must do so via a _Mutex_.
+Puisque nous voulons _spawn_ une tache asynchrone pour les boutons avec _Embassy_, nous avons besoin d'avoir une reference statique pour chacun des boutons (donc _lifetime_ du programme en entier). Ainsi, lorsque n'importe quelle ressource veut acceder à un bouton, il doit le faire via un _Mutex_.
 
 ```rust
 
 // Could be subject to interrupt but OK for now
 pub type ButtonMutex = Mutex<ThreadModeRawMutex, Option<Button<'static>>>;
 
-// In main.rs we have an initialization where we crash if there's an issue!
+// Dans le main.rs on a une initilisation ou on fait crash s'il y a un pepin!
 static BUTTON_P1: ButtonMutex = Mutex::new(None);
 static BUTTON_P2: ButtonMutex = Mutex::new(None);
 {
@@ -805,11 +841,12 @@ static BUTTON_P2: ButtonMutex = Mutex::new(None);
 }
 ```
 
-**Task to monitor simultaneous press on both buttons to trigger a reset via the _Watchdog_:**
+**Tache pour monitorer un appui simultané sur les 2 boutons afin de déclencher un reset via le _Watchdog_:**
 
-Here, we have an asynchronous task that monitors both buttons and triggers a reset if both buttons are pressed simultaneously for more than 3 seconds. We try not to block the mutex for too long to avoid blocking the game. We use a `select` to monitor both buttons simultaneously, which allows seeing which of the _futures_ completes first (and otherwise releasing the mutex quickly by exiting the scope).
+Ici, nous avons une tache asynchrone qui monitor les 2 boutons et qui déclenche un reset si les 2 boutons sont pressés en même temps pendant plus de 3 secondes.
+On essai de ne pas bloquer le mutex trop longtemps pour éviter de bloquer le jeu. On utilise un `select` pour monitorer chacun des boutons en même temps, qui permet de voir lequel des _futures_ est terminé en premier (et sinon lâcher le mutex rapidement en sortant de la portée).
 
-By evaluating state changes and updating press times, we can monitor if both buttons are pressed simultaneously for more than 3 seconds. If so, we trigger a reset via the _Watchdog_.
+En évaluant les changements d'états et en mettant à jour les temps de pressions, on peut monitorer si les 2 boutons sont pressés en même temps pendant plus de 3 secondes. Si oui, on déclenche un reset via le _Watchdog_.
 
 ```rust
 
@@ -927,13 +964,13 @@ pub async fn monitor_double_longpress(
 
 #### `main.rs`
 
-The main logic of the project is in the `main.rs` file. It contains peripheral initialization, the main game loop, and asynchronous tasks.
+La logique principale du projet est dans le fichier `main.rs`. Il contient l'initialisation des périphériques, la boucle principale du jeu et les tâches asynchrones.
 
-Using the `embassy` executor, we can easily create asynchronous tasks to manage buttons and the watchdog, use timers, and wait for responses to _futures_. This API is compatible with the `rp-rs` and `embedded-hal` HALs and PACs, libraries for stack containers like `heapless`, and other resources in embedded programming.
+En utilisant l'exécuteur `embassy`, on peut facilement créer des tâches asynchrones pour gérer les boutons et le watchdog, utiliser les timers et des attentes de réponses à des _futures_. Cet API est compatible avec les HAL et PAC de `rp-rs` et `embedded-hal`, les librairies pour les conteneurs sur la pile `heapless` et autres ressources en programmation embarquées.
 
-The main is decorated with the `#[embassy_executor::main]` feature flag which allows specifying the main function of the program. It's important to note that we're not using the Rust `main` function, but rather the `embassy_executor::main` function provided by the `embassy-rs` framework.
+Le main est décoré du feature flag `#[embassy_executor::main]` qui permet de spécifier la fonction principale du programme. Il est important de noter que nous n'utilisons pas la fonction `main` de Rust, mais plutôt la fonction `embassy_executor::main` qui est fournie par le framework `embassy-rs`.
 
-We therefore have access to the `embassy` executor's spawner to create asynchronous tasks.
+Nous avons donc accès au spawner de l'exécuteur `embassy` pour créer des tâches asynchrones.
 
 ```rust
 
@@ -941,19 +978,19 @@ We therefore have access to the `embassy` executor's spawner to create asynchron
 async fn main(spawner: Spawner) {...}
 ```
 
-##### Initialization and Launching Asynchronous Tasks
+##### Initialisation et lancement de tâches asynchrones
 
-We must first initialize the Pico's peripherals. We need:
+Nous devons donc premièrement initialiser les périphériques du pico. Nous avons besoin de:
 
 - 3 LEDS: (onboard, player1, player2)
-- 2 buttons: (player1, player2)
+- 2 boutons: (player1, player2)
 
-And our global instances:
+Et nos instances globales:
 
-- 1 watchdog: (for game reset)
-- 1 Game: (the game logic)
+- 1 watchdog: (pour le reset du jeu)
+- 1 Game: (la logique du jeu)
 
-Finally our containers for rules and scores (on the stack obviously):
+Finalement nos conteneurs pour les règles et scores (sur la pile évidemment):
 
 ```rust
 const TOTAL_ROUNDS: usize = 5;
@@ -966,9 +1003,9 @@ players_scores.insert(ButtonRole::Player1, 0).unwrap();
 players_scores.insert(ButtonRole::Player2, 0).unwrap();
 ```
 
-This is executed before the main game loop. We make the program panic if initialization fails.
+Ceci est exécuté avant la boucle de jeu principale. On fait paniquer le programme si l'initialisation échoue.
 
-We can thus launch our watchdog fed every 500 ms with a starvation time of 3s, which allows time for a reset if both buttons are pressed simultaneously for more than 3 seconds, reset in case it would be blocked elsewhere:
+Nous pouvons ainsi lancer notre watchdog nourris a toutes les 500 ms avec un temps de jeune de 3s, ce qui laisse le temps de faire un reset si les 2 boutons sont pressés en même temps pendant plus de 3 secondes, reset au cas ou il serait bloqué ailleurs:
 
 ```rust
 #[embassy_executor::task(pool_size = 1)]
@@ -990,20 +1027,20 @@ pub async fn feed_watchdog(
 }
 ```
 
-As mentioned above, we also have an asynchronous task to monitor the buttons and trigger a reset if both buttons are pressed simultaneously for more than 3 seconds, which will block access to the watchdog and naturally starve it, thus triggering a reset.
+Tel que mentionné plus haut, nous avons aussi une tâche asynchrone pour monitorer les boutons et faire un reset si les 2 boutons sont pressés en même temps pendant plus de 3 secondes qui ira bloqué l'accès au watchdog et va naturellement le starve donc declencher un reset.
 
-##### Main Game Loop
+##### Boucle principale du jeu
 
-We have 4 main states according to the `GameState` enum:
+Nous avons donc 4 états principaux selon le `GameState` enum:
 
-- `Waiting`: Waiting for button press to start the game
-- `Playing`: Playing
-- `ComputingResults`: Computing results
-- `Finished`: The game is finished. We start over
+- `Waiting`: En attente de l'appui sur le bouton pour commencer le jeu
+- `Playing`: En train de jouer
+- `ComputingResults`: En train de calculer les résultats
+- `Finished`: Le jeu est terminé. On recommence
 
-**_Waiting_ Mode**:
+**Mode _Waiting_**:
 
-The first step is to evaluate the GameState at the beginning of each game loop and transition to the next state based on the `match`.
+La première étape est d'évaluer l'état du GameState à chaque début de la boucle de jeu et d'effectuer la transition vers le prochain état en fonction du `match`
 
 ```rust
 GameState::Waiting => {
@@ -1055,39 +1092,39 @@ GameState::Waiting => {
 }
 ```
 
-The Waiting mode prepares the game for a new round and waits for the game start trigger. This mode:
+Le mode Waiting (Attente) prépare le jeu pour une nouvelle partie et attend le déclenchement du début de jeu. Ce mode:
 
-- Completely resets previous players' scores and times
-- Resets counters for both players
-- Activates a distinctive light pattern on the LEDs indicating the waiting state
-- Enters an invitation sequence where:
-  - A message invites players to press a button within 2 seconds
-  - The system simultaneously monitors three possible events:
-    - Full button press by player 1
-    - Full button press by player 2
-    - 2-second timeout expiration
-  - If a player presses their button, the game can start and transitions to Playing mode
-  - If no button is pressed within the time limit, the invitation sequence restarts
+- Réinitialise complètement les scores et les temps des joueurs précédents
+- Remet à zéro les compteurs pour les deux joueurs
+- Active un motif lumineux distinctif sur les LEDs indiquant l'état d'attente
+- Entre dans une séquence d'invitation où:
+  - Un message invite les joueurs à appuyer sur un bouton dans les 2 secondes
+  - Le système surveille simultanément trois événements possibles:
+    - Pression complète du bouton du joueur 1
+    - Pression complète du bouton du joueur 2
+    - Expiration du délai de 2 secondes
+  - Si un joueur appuie sur son bouton, le jeu peut commencer et passe au mode Playing
+  - Si aucun bouton n'est pressé dans le délai imparti, la séquence d'invitation recommence
 
-This waiting phase ensures the game starts under fair conditions with a complete score reset, while offering an intuitive user interface to start a new game.
+Cette phase d'attente garantit que le jeu démarre dans des conditions équitables avec une réinitialisation complète des scores, tout en offrant une interface utilisateur intuitive pour lancer une nouvelle partie.
 
-**_Playing_ Mode**:
+**Mode _Playing_**:
 
-The Playing mode is the heart of the game where players compete against each other. This mode:
+Le mode Playing (Jeu) est le cœur du jeu où les joueurs s'affrontent. Ce mode:
 
-1. Indicates that the game is in progress and prepares players for the first round.
-2. For each round, it executes a preparation sequence:
-   - The LEDs flash to signal the start of the round.
-   - A random time is generated to turn on the LED.
-   - Players must press their button as soon as the LED turns off.
-3. The system monitors both buttons to determine which player reacted the fastest.
-4. The round winner is determined based on reaction time and is recorded.
-5. Players' scores are updated and displayed.
-6. If we have a winner (best of 5, but modifiable in the code), the game transitions to the _ComputingResults_ state.
+1. Indique que le jeu est en cours et prépare les joueurs pour le premier tour.
+2. Pour chaque tour, il exécute une séquence de préparation:
+   - Les LEDs clignotent pour signaler le début du tour.
+   - Un temps aléatoire est généré pour allumer la LED.
+   - Les joueurs doivent appuyer sur leur bouton dès que la LED s'éteint.
+3. Le système surveille les deux boutons pour déterminer lequel des joueurs a réagi le plus rapidement.
+4. Le gagnant du tour est déterminé en fonction du temps de réaction et est enregistré.
+5. Les scores des joueurs sont mis à jour et affichés.
+6. Si on a un gagnant (meilleur de 5, mais modifiable dans le code), le jeu passe à l'état _ComputingResults_.
 
-We allow 2 seconds between each round to let players prepare and call reset if needed.
+On laisse le temps de 2 secondes entre chaque tour pour permettre aux joueurs de se préparer et d'appeler le reset au besoin.
 
-We block the button mutex to avoid interfering with the game, but we ensure to release it quickly after each round.
+On bloque le mutex des boutons pour éviter de d'interférer avec le jeu, mais on s'assure de le libérer rapidement après chaque tour.
 
 ```rust
 GameState::Playing => {
@@ -1160,9 +1197,9 @@ GameState::Playing => {
 }
 ```
 
-**_ComputingResults_ Mode**:
+**Mode _ComputingResults_**:
 
-We calculate the game results and display the winner. We use the players' response times to determine the best player and display the game statistics. The LED flashing routine is used to highlight the winner.
+On calcule les résultats du jeu et on affiche le gagnant. On utilise les temps de réponse des joueurs pour déterminer le meilleur joueur et on affiche les statistiques de la partie. La routine de flashage des LEDs est utilisée pour mettre en valeur le gagnant.
 
 ```rust
 GameState::ComputingResults => {
@@ -1204,11 +1241,12 @@ GameState::ComputingResults => {
   highlight_game_winner(&mut leds, highest_scorer).await;
   game::transition_game_state(GameState::Finished).await;
 }
+
 ```
 
-**_Finished_ Mode**:
+**Mode _Finished_**:
 
-A simple reset to Waiting mode.
+Un simple reset vers le mode Attente.
 
 ```rust
 GameState::Finished => {
@@ -1217,16 +1255,16 @@ GameState::Finished => {
 }
 ```
 
-## Demo :camera:
+## Démo :movie_camera:
 
-### Game Example
+### Exemple d'une partie
 
-[Demo Video](https://youtube.com/shorts/mJzi2ivcp6k?feature=share)
+[Vidéo de démonstration](https://youtube.com/shorts/mJzi2ivcp6k?feature=share)
 
-And the corresponding logs:
+Et les logs correspondant:
 
 ```text
-pico-button-wars/pico-button-wars on  main is 󰏗 v0.1.0 via 󱘗 v1.85.0-nightly took 5s
+pico-button-wars/pico-button-wars on  main is 󰏗 v0.1.0 via 󱘗 v1.85.0-nightly took 5s
 ❯ cargo run --release
     Finished `release` profile [optimized + debuginfo] target(s) in 0.14s
      Running `probe-rs run --chip RP2040 --log-format '{t} - {f} [{L:<4}]  {s}
@@ -1420,18 +1458,16 @@ pico-button-wars/pico-button-wars on  main is 󰏗 v0.1.0 via 󱘗 v1.85.0-night
 96.365704 - main.rs [INFO]  Press any button within the next 2 seconds to start the game...
 ```
 
-### Reset with Both Buttons
+### Reset avec les 2 boutons
 
-[Demo of reset with both buttons](https://youtube.com/shorts/U9RWrXn6WUA?feature=share)
+[Démo de reset avec les 2 boutons](https://youtube.com/shorts/U9RWrXn6WUA?feature=share)
 
-We lose the connection with `probe-rs` because of hardware reset:
+On perds le lien avec `probe-rs` car reset hardware:
 
 ```text
 7.056322 - game.rs [INFO]  Transition finished: Game { state: Playing, state_start: Instant { ticks: 7056317 }, state_duration: Duration { ticks: 7055562 } }
 
 7.056392 - main.rs [INFO]  We are playing!
-
-7.056417 - main.rs [INFO]  Players get ready for round #0
 
 7.056417 - main.rs [INFO]  Players get ready for round #0
 
@@ -1491,6 +1527,17 @@ Caused by:
 
 ## Conclusion :checkered_flag:
 
-All things considered, this project is a good example of using Rust for embedded programming. It utilizes Rust's core concepts such as traits, enumerations and structures, error handling and null values management (`Option` and `Result` enums) to create a simple yet fun game. The project also employs advanced concepts like asynchronous tasks and mutexes to manage concurrency and synchronization between different parts of the code.
+Sommes toutes, le projet est un bon exemple de l'utilisation de Rust pour la programmation embarquée. Il utilise les concepts de base de Rust, tels que les traits, les énumérations et les structures, la gestion des erreurs et valeurs null (`Option` et `Result` enums) pour créer un jeu simple mais amusant. Le projet utilise également des concepts avancés tels que les tâches asynchrones et les mutex pour gérer la concurrence et la synchronisation entre les différentes parties du code.
 
-I could have created more sophisticated abstractions to manage buttons and LEDs, particularly by using an interrupt system and implementing prioritization between tasks with finer control of mutexes. However, I favored simplicity and code readability for this project. The constants used for debounce times and wait delays could also be made configurable in a future version, thus offering more flexibility without sacrificing system robustness.
+J'aurais pu créer des abstractions plus sophistiquées pour gérer les boutons et les LEDs, notamment en utilisant un système d'interruptions et en implémentant une priorisation entre les tâches avec une gestion plus fine des mutex. Cependant, j'ai privilégié la simplicité et la lisibilité du code pour ce projet. Les constantes utilisées pour les temps de debounce et les délais d'attente pourraient également être rendues configurables dans une version future, offrant ainsi plus de flexibilité sans sacrifier la robustesse du système.
+
+## References :books:
+
+<!-- As numbered footnotes-->
+
+<a id="0">[0]</a> **Rust Programming Language**. Rust Foundation. 2024. <https://www.rust-lang.org/>
+<a id="1">[1]</a> **The Rust Programming Language**. Klabnik, Steve, and Carol Nichols. 2nd ed., No Starch Press.
+<a id="2">[2]</a> **Industry and academia support**. Rust For Linux. 2024. <https://rust-for-linux.com/industry-and-academia-support>
+<a id="3">[3]</a> **The Embedded Rust Book**. Rust Embedded Working Group. 2024. <https://docs.rust-embedded.org/book/>
+<a id="4">[4]</a> **Rust Embedded**. Rust Embedded Working Group. 2024. <https://rust-embedded.github.io/book/>
+<a id="5">[5]</a> **Embassy**. Embassy. 2024. <https://embassy.dev/>
